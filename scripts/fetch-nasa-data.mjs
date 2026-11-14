@@ -14,7 +14,7 @@ const get = async (url) => {
 }
 
 const end = new Date().toISOString().slice(0, 10)
-const start = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10)
+const start = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
 const donki = async (type, slim, keep, name) => {
   try {
     const list = (await get(`https://api.nasa.gov/DONKI/${type}?startDate=${start}&endDate=${end}&api_key=${key}`)).map(slim).filter(keep)
