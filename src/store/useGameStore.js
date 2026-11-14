@@ -2,11 +2,8 @@ import { create } from 'zustand'
 import { nasaEvents } from '../data/nasaEvents.js'
 import { marsEvents } from '../data/marsEvents.js'
 import { fetchSpaceWeather, flareToEvent, cmeToEvent, stormToEvent } from '../lib/nasa.js'
+import { MISSIONS, missionById, starsFor } from '../data/missions.js'
 
-export const SOLS_TO_WIN = 10
-// Passive cost per Sol. Mars events are harsher, so its base drain is lower (tuned with `npm run check`).
-export const DRAINS = { moon: { power: 5, oxygen: 4 }, mars: { power: 2, oxygen: 2 } }
-const START = { power: 100, oxygen: 100, shielding: 100, science: 0 }
 const VITAL = ['power', 'oxygen', 'shielding'] // hitting 0 on any of these = game over
 
 const clamp = (n) => Math.max(0, Math.min(100, n))
@@ -18,6 +15,10 @@ export function applyEffects(res, effects = {}) {
 }
 
 export const isDead = (res) => VITAL.some((k) => res[k] <= 0)
+
+/** Harder missions make every cost hurt more: negative effects × harm, rounded to 5. */
+export const scaleEffects = (effects, harm = 1) =>
+  Object.fromEntries(Object.entries(effects).map(([k, v]) => [k, v < 0 ? -Math.max(5, Math.round((-v * harm) / 5) * 5) : v]))
 
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5) // ponytail: biased shuffle, fine for 10 cards
 
@@ -33,14 +34,21 @@ export function spaceWeatherEvents(sw, planet) {
   return out
 }
 
-// 10 cards: real space weather at Sol 1, 4, 7; content events fill the rest.
-export function buildDeck(planet, sw) {
-  const content = shuffle((planet === 'mars' ? marsEvents : nasaEvents).filter((e) => e.planet === planet))
-  const live = spaceWeatherEvents(sw, planet)
-  const generic = live.length ? content.filter((e) => !/flare|storm|sep_/.test(e.id)) : content
-  const deck = generic.slice(0, SOLS_TO_WIN - live.length)
+// One card per Sol: real space weather at Sol 1, 4, 7 (as many as the mission asks for),
+// content events fill the rest. Long missions reshuffle the content pool.
+export function buildDeck(mission, sw) {
+  const pool = (mission.planet === 'mars' ? marsEvents : nasaEvents).filter((e) => e.planet === mission.planet)
+  const live = spaceWeatherEvents(sw, mission.planet).slice(0, mission.weather)
+  const generic = live.length ? pool.filter((e) => !/flare|storm|sep_/.test(e.id)) : pool
+  const deck = []
+  while (deck.length < mission.sols - live.length) {
+    const round = shuffle(generic)
+    if (round[0] === deck.at(-1)) round.push(round.shift()) // no same card twice in a row
+    deck.push(...round)
+  }
+  deck.length = mission.sols - live.length
   live.forEach((e, i) => deck.splice(Math.min(i * 3, deck.length), 0, e))
-  return deck.slice(0, SOLS_TO_WIN)
+  return deck
 }
 
 const load = () => {
@@ -52,46 +60,50 @@ const save = (data) => {
 
 export const useGameStore = create((set, get) => ({
   screen: 'welcome', // welcome | map | game | end
-  res: START,
+  mission: MISSIONS[0],
+  planet: 'moon',
+  res: { ...MISSIONS[0].start, science: 0 },
   sol: 1,
   deck: [],
   event: null,
   fact: null, // { feedback, fact, source } shown after a choice
   log: [],
   result: null, // 'victory' | 'gameover'
-  planet: 'moon',
+  earned: 0, // stars from the last win
   spaceWeather: null, // { flares, cmes, storms, live }
-  marsUnlocked: !!load().marsUnlocked,
-  bestScience: load().bestScience ?? 0,
+  progress: load().progress ?? {}, // { [missionId]: best stars }
 
   go: (screen) => set({ screen }),
 
   loadSpaceWeather: async () => set({ spaceWeather: await fetchSpaceWeather() }),
 
-  startMission: (planet = get().planet) => {
-    const deck = buildDeck(planet, get().spaceWeather)
-    set({ screen: 'game', planet, res: START, sol: 1, deck, event: deck[0], fact: null, log: [], result: null })
+  isUnlocked: (id) => id === 1 || (get().progress[id - 1] ?? 0) > 0,
+
+  startMission: (id = get().mission.id) => {
+    const mission = missionById(id)
+    const deck = buildDeck(mission, get().spaceWeather)
+    set({ screen: 'game', mission, planet: mission.planet, res: { ...mission.start, science: 0 }, sol: 1, deck, event: deck[0], fact: null, log: [], result: null })
   },
 
   choose: (choice) => {
-    const { res, event, sol, log } = get()
+    const { res, event, sol, log, mission } = get()
     set({
-      res: applyEffects(res, choice.effects),
+      res: applyEffects(res, scaleEffects(choice.effects, mission.harm)),
       fact: { feedback: choice.feedback, fact: event.nasa_fact, source: event.nasa_source },
       log: [`Sol ${sol}: ${choice.text}`, ...log],
     })
   },
 
   nextSol: () => {
-    const { res, sol, deck, bestScience, planet } = get()
-    const DRAIN = DRAINS[planet]
+    const { res, sol, deck, mission, progress } = get()
     let next = res
-    if (!isDead(next)) next = applyEffects(next, { power: -DRAIN.power, oxygen: -DRAIN.oxygen })
+    if (!isDead(next)) next = applyEffects(next, { power: -mission.drain.power, oxygen: -mission.drain.oxygen })
     if (isDead(next)) return set({ res: next, fact: null, result: 'gameover', screen: 'end' })
-    if (sol >= SOLS_TO_WIN) {
-      const best = Math.max(bestScience, next.science)
-      save({ marsUnlocked: true, bestScience: best })
-      return set({ res: next, fact: null, result: 'victory', screen: 'end', marsUnlocked: true, bestScience: best })
+    if (sol >= mission.sols) {
+      const earned = starsFor(next.science)
+      const best = { ...progress, [mission.id]: Math.max(progress[mission.id] ?? 0, earned) }
+      save({ progress: best })
+      return set({ res: next, fact: null, result: 'victory', screen: 'end', progress: best, earned })
     }
     set({ res: next, fact: null, sol: sol + 1, event: deck[sol] })
   },

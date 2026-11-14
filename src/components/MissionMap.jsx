@@ -1,4 +1,6 @@
 import { useGameStore } from '../store/useGameStore.js'
+import { MISSIONS } from '../data/missions.js'
+import { Stars } from './EndScreen.jsx'
 
 const fmt = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
@@ -29,36 +31,45 @@ function SpaceWeather() {
   )
 }
 
-function Node({ icon, label, sub, onClick, locked, glow }) {
+// Duolingo-style winding path: mission 1 at the top, each node swings left/right.
+const OFFSET = [0, 60, 90, 60, 0, -60, -90, -60, 0, 60]
+
+function MissionNode({ m, offset }) {
+  const { startMission, progress, isUnlocked } = useGameStore()
+  const stars = progress[m.id] ?? 0
+  const open = isUnlocked(m.id)
+  const isNext = open && !stars
+  const mars = m.planet === 'mars'
+  const ring = !open ? 'border-slate-700 bg-slate-900 text-slate-500'
+    : mars ? 'border-orange-400 bg-slate-800 text-orange-100 shadow-[0_0_24px_#fb923c88]'
+    : 'border-cyan-300 bg-slate-800 text-cyan-100 shadow-[0_0_24px_#22d3ee88]'
   return (
-    <div className="flex flex-col items-center gap-1">
-      <button onClick={onClick} disabled={locked}
-        className={`flex h-28 w-28 flex-col items-center justify-center rounded-full border-4 transition ${locked
-          ? 'border-slate-700 bg-slate-900 text-slate-500'
-          : `${glow} animate-bounce bg-slate-800 [animation-duration:2.2s] hover:scale-105`}`}>
-        <span className="text-4xl">{locked ? '🔒' : icon}</span>
-        <span className="text-sm font-bold">{label}</span>
+    <li className="flex flex-col items-center" style={{ transform: `translateX(${offset}px)` }}>
+      <button onClick={() => startMission(m.id)} disabled={!open} aria-label={`Mission ${m.id}: ${m.name}${open ? '' : ' (locked)'}`}
+        className={`grid h-20 w-20 place-items-center rounded-full border-4 transition hover:scale-105 disabled:hover:scale-100 ${ring} ${isNext ? 'animate-bounce [animation-duration:2s]' : ''}`}>
+        <span className="text-3xl leading-none">{open ? (mars ? '🔴' : '🌕') : '🔒'}</span>
+        <span className="-mt-3 text-xs font-black">{m.id}</span>
       </button>
-      <p className="text-xs text-slate-400">{sub}</p>
-    </div>
+      <p className={`mt-1 text-sm font-bold ${open ? 'text-slate-100' : 'text-slate-500'}`}>{m.name}</p>
+      {stars > 0 ? <Stars n={stars} size="text-sm" /> : <p className="max-w-[12rem] text-[11px] text-slate-400">{open ? m.goal : `${m.sols} Sols`}</p>}
+    </li>
   )
 }
 
 export default function MissionMap() {
-  const { startMission, marsUnlocked, bestScience, go } = useGameStore()
+  const { go, progress } = useGameStore()
+  const total = Object.values(progress).reduce((a, b) => a + b, 0)
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-3 text-center">
-      <h2 className="text-2xl font-bold text-cyan-300">Choose your mission</h2>
-      {bestScience > 0 && <p className="text-sm text-slate-400">Best science score: 🔬 {bestScience}</p>}
-
-      <div className="mr-24 mt-8"><Node icon="🔴" label="Mars" sub={marsUnlocked ? 'Survive 10 Sols on Mars' : 'Beat the Moon to unlock'} locked={!marsUnlocked}
-        onClick={() => startMission('mars')} glow="border-orange-400 text-orange-200 shadow-[0_0_30px_#fb923c]" /></div>
-      <svg width="140" height="50" viewBox="0 0 140 50" aria-hidden className="-my-2"><path d="M30 4 C 30 30, 110 20, 110 46" fill="none" stroke="#334155" strokeWidth="4" strokeDasharray="8 8" /></svg>
-      <div className="ml-24"><Node icon="🌕" label="Moon" sub="Survive 10 Sols" onClick={() => startMission('moon')}
-        glow="border-cyan-300 text-cyan-200 shadow-[0_0_30px_#22d3ee]" /></div>
-
+    <div className="mx-auto flex max-w-md flex-col items-center gap-4 text-center">
+      <h2 className="text-2xl font-bold text-cyan-300">Mission Map</h2>
+      <p className="text-sm text-slate-400">⭐ {total} / {MISSIONS.length * 3} stars · easiest at the top, hardest at the bottom</p>
       <SpaceWeather />
-      <button onClick={() => go('welcome')} className="text-sm text-slate-500 underline">Back</button>
+      <ol className="flex flex-col items-center gap-5 py-2">
+        {MISSIONS.map((m, i) => (
+          <MissionNode key={m.id} m={m} offset={OFFSET[i]} />
+        )).flatMap((node, i) => i === 5 ? [<li key="mars" className="w-full border-t border-dashed border-orange-400/40 pt-3 text-xs font-bold tracking-widest text-orange-300">🚀 ON TO MARS</li>, node] : [node])}
+      </ol>
+      <button onClick={() => go('welcome')} className="mb-6 text-sm text-slate-500 underline">Back</button>
     </div>
   )
 }

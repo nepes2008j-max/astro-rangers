@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { useGameStore, SOLS_TO_WIN, DRAINS } from '../store/useGameStore.js'
+import { useGameStore, scaleEffects } from '../store/useGameStore.js'
 import { STATIONS, assignStations } from '../lib/stations.js'
 import { fetchOsdrStudy, osdrTermFor } from '../lib/nasa.js'
 
@@ -60,10 +60,10 @@ function OsdrStudy({ event }) {
 }
 
 export default function Dashboard() {
-  const { res, sol, event, fact, log, choose, nextSol, planet } = useGameStore()
+  const { res, sol, event, fact, log, choose, nextSol, planet, mission } = useGameStore()
   const stations = assignStations(event.choices)
   useEffect(() => { fetchOsdrStudy(osdrTermFor(event)) }, [event]) // warm the cache before the fact popup opens
-  const DRAIN = DRAINS[planet]
+  const DRAIN = mission.drain
   return (
     <div className="fixed inset-0 overflow-hidden bg-slate-950">
       <Suspense fallback={<p className="grid h-full place-items-center text-cyan-300">Landing on the Moon…</p>}>
@@ -73,8 +73,8 @@ export default function Dashboard() {
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 grid gap-2 p-3">
         <header className="flex items-center justify-between">
-          <h1 className="text-sm font-black tracking-widest text-cyan-300 drop-shadow">MISSION CONTROL {planet === 'mars' ? '🔴' : '🌕'}</h1>
-          <span className="rounded-full border border-cyan-400/50 bg-slate-950/70 px-3 py-0.5 font-mono text-sm text-cyan-200">Sol {sol}/{SOLS_TO_WIN}</span>
+          <h1 className="text-sm font-black tracking-widest text-cyan-300 drop-shadow">{planet === 'mars' ? '🔴' : '🌕'} MISSION {mission.id}: {mission.name.toUpperCase()}</h1>
+          <span className="rounded-full border border-cyan-400/50 bg-slate-950/70 px-3 py-0.5 font-mono text-sm text-cyan-200">Sol {sol}/{mission.sols}</span>
         </header>
         <section className="grid grid-cols-4 gap-2">
           {RES.map((r) => <Bar key={r.id} {...r} value={res[r.id]} vital={r.id !== 'science'} />)}
@@ -95,7 +95,7 @@ export default function Dashboard() {
                 className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-left text-sm transition hover:border-cyan-300 disabled:opacity-50">
                 <b className="text-cyan-300">{LETTERS[i]}</b> <span className="font-semibold">{c.text}</span>
                 <span className="ml-1 text-xs text-slate-400">@ {STATIONS[stations[i]].icon} {STATIONS[stations[i]].name}</span>
-                <Effects effects={c.effects} />
+                <Effects effects={scaleEffects(c.effects, mission.harm)} />
               </button>
             ))}
           </div>
@@ -121,7 +121,7 @@ export default function Dashboard() {
             </div>
             <OsdrStudy event={event} />
             <button onClick={nextSol} autoFocus className="mt-5 w-full rounded-xl bg-cyan-400 py-3 font-bold text-slate-950">
-              {sol >= SOLS_TO_WIN ? 'Finish mission' : 'Next Sol →'}
+              {sol >= mission.sols ? 'Finish mission' : 'Next Sol →'}
             </button>
           </div>
         </div>

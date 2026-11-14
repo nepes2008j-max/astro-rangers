@@ -5,6 +5,12 @@ handle real space-weather alerts, and keep ⚡ power, 💨 oxygen and 🛡️ sh
 
 **Play:** https://&lt;your-github-username&gt;.github.io/astro-rangers/
 
+## Missions
+10 missions from easiest to hardest: 5 on the Moon, then 5 on Mars. Beat one to unlock the next.
+Each win earns ⭐ (survive), ⭐⭐ (30+ science) or ⭐⭐⭐ (60+ science). Progress is saved in the browser.
+Tune them in `src/data/missions.js`. `npm run check` plays every mission and fails if a careful player
+can't win or if a mission is easier than the one before.
+
 ## Controls
 - **WASD / arrows** move · **Shift** sprint · **Space** jump (low gravity!) · **drag or Q/E** turn the camera
 - Walk onto a glowing pad at a station (Shield Generator, Solar Array, Greenhouse, Science Lab, Comms Tower, Habitat) and stand still to do the job. Phones get an on-screen D-pad.
@@ -22,7 +28,7 @@ Every event fact in `src/data/nasaEvents.js` and `src/data/marsEvents.js` comes 
 ```bash
 npm install
 npm run dev         # http://localhost:5173 (also proxies OSDR so it loads live)
-npm run check       # plays 4000 games: rules + balance (careful player must win, random clicking must not)
+npm run check       # plays every mission 2000x: rules + balance + difficulty order
 npm run fetch-data  # refresh the real NASA snapshot
 npm run build       # static site in dist/
 ```

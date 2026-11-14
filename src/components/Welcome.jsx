@@ -8,7 +8,7 @@ export default function Welcome() {
       <h1 className="text-4xl font-black tracking-tight text-cyan-300 drop-shadow-[0_0_12px_#22d3ee]">ASTRO RANGERS</h1>
       <p className="text-lg text-slate-300">Outpost Survival</p>
       <p className="text-slate-400">
-        Run a base on the Moon, then Mars, for 10 days each. Walk your astronaut around the base to do every job. Every choice costs something.
+        10 missions from easy to super hard, on the Moon and then Mars. Walk your astronaut around the base to do every job. Every choice costs something.
         Keep your ⚡ power, 💨 oxygen and 🛡️ shields above zero!
       </p>
       <button onClick={() => go('map')}
