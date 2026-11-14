@@ -2,24 +2,23 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Stars, Environment, Lightformer } from '@react-three/drei'
 import * as THREE from 'three'
-import { useGameStore } from '../store/useGameStore.js'
+import { useGameStore, AIRLOCK } from '../store/useGameStore.js'
 import { STATIONS, assignStations, padFor } from '../lib/stations.js'
 import { suitById } from '../data/suits.js'
 
 // ---------- tuning knobs ----------
-const WALK = 5
-const SPRINT = 9
 const GRAVITY = { moon: 2.5, mars: 5, europa: 2.1 } // ponytail: game-feel values; real: Moon 1.62, Mars 3.71, Europa 1.31 m/s²
 const JUMP = 4.5
 const WORLD_R = 120
 const PAD_R = 1.4
 const WORK_TIME = 1.2 // seconds standing on a pad to "do the job"
-const CAM_DIST = 9
-const CAM_HEIGHT = 5
-const FLAT_R = 34 // the base sits on a levelled area; terrain rolls outside it
+const CAM_DIST = 7
+const CAM_HEIGHT = 3.8
+const FLAT_R = 28 // the base sits on a levelled area; terrain rolls outside it
 
 const THEMES = {
-  moon: { ground: '#9a9aa0', rock: '#6b6a68', mountain: '#5a5a60', sky: '#000003', fog: null, sunSize: 9, ambient: 0.1, hemi: 0.18, sun: 3.4 },
+  // Real lunar soil is dark grey-brown; with no air there is almost no fill light, so shadows are near black.
+  moon: { ground: '#8e8a85', rock: '#5f5c58', mountain: '#55534f', sky: '#000000', fog: null, sunSize: 9, ambient: 0.05, hemi: 0.12, sun: 3.8 },
   mars: { ground: '#c4683a', rock: '#7c3418', mountain: '#8a3b1c', sky: '#1c0905', fog: ['#4a1d0c', 90, 260], sunSize: 6, ambient: 0.28, hemi: 0.3, sun: 2.6 },
   // Sunlight at Jupiter is ~25x weaker; kept brighter than real so kids can see.
   europa: { ground: '#e4ebf1', rock: '#b8c4cf', mountain: '#c9d3dc', sky: '#000002', fog: null, sunSize: 2.5, ambient: 0.16, hemi: 0.3, sun: 2.1, icy: true },
@@ -67,16 +66,20 @@ const fbm = (x, z) => noise(x, z) * 0.6 + noise(x * 2.1, z * 2.1) * 0.28 + noise
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
 
 // Bowl-shaped craters with raised rims, outside the levelled base area.
+// The real Moon is covered in craters of every size, from huge basins to footprint-sized pits.
 const CRATERS = (() => {
   const rand = rng(7)
-  return Array.from({ length: 38 }, () => { const [x, z] = ring(rand, 46, 150); const r = 3 + rand() ** 2 * 14; return [x, z, r, r * (0.16 + rand() * 0.1)] })
+  const big = Array.from({ length: 38 }, () => { const [x, z] = ring(rand, 46, 150); const r = 3 + rand() ** 2 * 14; return [x, z, r, r * (0.16 + rand() * 0.1)] })
+  const small = Array.from({ length: 170 }, () => { const [x, z] = ring(rand, FLAT_R + 2, 150); const r = 0.7 + rand() ** 2 * 3.5; return [x, z, r, r * (0.18 + rand() * 0.1)] })
+  return [...big, ...small]
 })()
 
 /** Ground height at (x, z): flat base pad, rolling dunes and craters further out. */
 function heightAt(x, z) {
   const d = Math.hypot(x, z)
-  let h = smooth(FLAT_R, FLAT_R + 18, d) * ((fbm(x * 0.018, z * 0.018) - 0.45) * 7 + (fbm(x * 0.09, z * 0.09) - 0.5) * 0.9)
+  let h = smooth(FLAT_R, FLAT_R + 14, d) * ((fbm(x * 0.018, z * 0.018) - 0.45) * 7 + (fbm(x * 0.09, z * 0.09) - 0.5) * 0.9)
   for (const [cx, cz, r, depth] of CRATERS) {
+    if (Math.abs(x - cx) > r * 1.5 || Math.abs(z - cz) > r * 1.5) continue
     const k = Math.hypot(x - cx, z - cz) / r
     if (k > 1.5) continue
     h += (k < 1 ? -depth * (1 - k * k) : 0) + depth * 0.4 * Math.exp(-(((k - 1) / 0.18) ** 2))
@@ -181,151 +184,297 @@ function Beam({ a, b, r = 0.04, color = '#a1a1aa' }) {
 }
 
 // ---------- player ----------
-function Astronaut({ pads }) {
-  const root = useRef()
-  const body = useRef()
-  const legL = useRef(), legR = useRef(), armL = useRef(), armR = useRef()
-  const work = useRef()
-  const arrow = useRef()
-  const s = useRef({ vy: 0, y: 0, t: 0, padIdx: -1, progress: 0, done: false }).current
-  const camPos = useMemo(() => new THREE.Vector3(), [])
-  const planet = useGameStore((st) => st.planet)
-  const oxygen = useGameStore((st) => st.res.oxygen)
-  const suitColor = useGameStore((st) => suitById(st.suit).color)
+// How each world feels underfoot. Low gravity = slow "bunny hops" and slippery stops, like Apollo astronauts.
+const GAIT = {
+  moon: { walk: 4.2, sprint: 7.5, grip: 2.5, cadence: 1.5, hop: 0.3 },
+  europa: { walk: 4, sprint: 7, grip: 2.2, cadence: 1.4, hop: 0.34 },
+  mars: { walk: 4.6, sprint: 8, grip: 5, cadence: 2, hop: 0.1 },
+}
+const DUST = { moon: '#8e8a85', mars: '#b8673b', europa: '#dfe7ee' }
+const PRINTS = 260
+const PUFFS = 10
+const SCAN_TIME = 1.5
+const REFILL_R = 2.2
 
-  // Backpack display: oxygen left, red when low.
+// Suit limbs (module level so they are not rebuilt on every render).
+const SuitMat = ({ color }) => <meshStandardMaterial color={color} roughness={0.8} />
+const JointMat = () => <meshStandardMaterial color="#9ca3af" roughness={0.6} />
+const DarkMat = () => <meshStandardMaterial color="#4b5563" roughness={0.8} />
+function SuitLeg({ x, thigh, shin, color }) {
+  return (
+    <group ref={thigh} position={[x, 0.98, 0]}>
+      <mesh position={[0, -0.22, 0]} castShadow><capsuleGeometry args={[0.09, 0.3, 4, 12]} /><SuitMat color={color} /></mesh>
+      <group ref={shin} position={[0, -0.45, 0]}>
+        <mesh><sphereGeometry args={[0.085, 12, 10]} /><JointMat /></mesh>
+        <mesh position={[0, -0.2, 0]} castShadow><capsuleGeometry args={[0.08, 0.28, 4, 12]} /><SuitMat color={color} /></mesh>
+        <mesh position={[0, -0.45, 0.04]} castShadow><boxGeometry args={[0.15, 0.1, 0.3]} /><DarkMat /></mesh>
+      </group>
+    </group>
+  )
+}
+function SuitArm({ x, arm, fore, color }) {
+  return (
+    <group ref={arm} position={[x, 1.5, 0]}>
+      <mesh><sphereGeometry args={[0.1, 14, 12]} /><SuitMat color={color} /></mesh>
+      <mesh position={[0, -0.15, 0]} castShadow><capsuleGeometry args={[0.07, 0.2, 4, 10]} /><SuitMat color={color} /></mesh>
+      <group ref={fore} position={[0, -0.3, 0]}>
+        <mesh><sphereGeometry args={[0.068, 10, 8]} /><JointMat /></mesh>
+        <mesh position={[0, -0.14, 0]} castShadow><capsuleGeometry args={[0.064, 0.18, 4, 10]} /><SuitMat color={color} /></mesh>
+        <mesh position={[0, -0.3, 0]} castShadow><sphereGeometry args={[0.065, 12, 10]} /><DarkMat /></mesh>
+      </group>
+    </group>
+  )
+}
+
+function Astronaut({ pads }) {
+  const root = useRef(), body = useRef()
+  const thighL = useRef(), shinL = useRef(), thighR = useRef(), shinR = useRef()
+  const armL = useRef(), foreL = useRef(), armR = useRef(), foreR = useRef()
+  const work = useRef(), workMat = useRef()
+  const arrow = useRef(), arrowMat = useRef(), sampleArrow = useRef()
+  const prints = useRef()
+  const puffs = useRef([])
+  const s = useRef({ vx: 0, vz: 0, y: 0, vy: 0, t: 0, padIdx: -1, progress: 0, done: false, sampleId: -1, scan: 0, o2: 100, step: 0, print: 0, respawn: 0, puff: 0, life: Array(PUFFS).fill(0) }).current
+  const camPos = useMemo(() => new THREE.Vector3(), [])
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const printGeo = useMemo(() => new THREE.PlaneGeometry(0.15, 0.3).rotateX(-Math.PI / 2), [])
+  useEffect(() => () => printGeo.dispose(), [printGeo])
+  const planet = useGameStore((st) => st.planet)
+  const oxygen = useGameStore((st) => st.suitO2)
+  const suitColor = useGameStore((st) => suitById(st.suit).color)
+  const gait = GAIT[planet]
+
+  // Backpack display mirrors the suit tank, red when low.
   const display = useMemo(() => canvasTexture(128, 64, (g, w, h) => {
     g.fillStyle = '#020617'; g.fillRect(0, 0, w, h)
-    const low = oxygen < 20
-    g.fillStyle = low ? '#ef4444' : '#22d3ee'
+    g.fillStyle = oxygen < 30 ? '#ef4444' : '#22d3ee'
     g.fillRect(8, 8, (w - 16) * (oxygen / 100), 8)
     g.font = 'bold 30px monospace'; g.textAlign = 'center'
     g.fillText(`O₂ ${oxygen}%`, w / 2, 52)
   }), [oxygen])
   useEffect(() => () => display.dispose(), [display])
 
+  useLayoutEffect(() => { // footprints start invisible
+    dummy.scale.setScalar(0); dummy.updateMatrix()
+    for (let i = 0; i < PRINTS; i++) prints.current.setMatrixAt(i, dummy.matrix)
+    prints.current.instanceMatrix.needsUpdate = true
+  }, [dummy])
+
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05)
     const p = root.current.position
-    const { fact, choose, event } = useGameStore.getState()
-    const locked = !!fact
+    const st = useGameStore.getState()
+    const locked = !!st.fact
 
+    if (st.respawn !== s.respawn) { // rescued: back to the airlock with a full tank
+      s.respawn = st.respawn; s.o2 = 100; s.vx = s.vz = 0
+      p.set(AIRLOCK[0], 0, AIRLOCK[1] + 1.5)
+    }
+
+    // Movement with inertia: low gravity means little grip, so you speed up and stop slowly.
     cam.yaw += ((input.turnL ? 1 : 0) - (input.turnR ? 1 : 0)) * 2 * dt
-    const f = (locked ? 0 : (input.up ? 1 : 0) - (input.down ? 1 : 0))
-    const r = (locked ? 0 : (input.right ? 1 : 0) - (input.left ? 1 : 0))
-    const moving = f !== 0 || r !== 0
-    if (moving) {
+    const f = locked ? 0 : (input.up ? 1 : 0) - (input.down ? 1 : 0)
+    const r = locked ? 0 : (input.right ? 1 : 0) - (input.left ? 1 : 0)
+    let tx = 0, tz = 0
+    const sprinting = input.sprint && (f || r)
+    if (f || r) {
       const sin = Math.sin(cam.yaw), cos = Math.cos(cam.yaw)
-      let dx = -sin * f + cos * r, dz = -cos * f - sin * r
-      const len = Math.hypot(dx, dz)
-      dx /= len; dz /= len
-      const speed = input.sprint ? SPRINT : WALK
-      p.x += dx * speed * dt
-      p.z += dz * speed * dt
-      root.current.rotation.y = Math.atan2(dx, dz)
-      s.t += dt * (input.sprint ? 1.6 : 1)
+      tx = -sin * f + cos * r; tz = -cos * f - sin * r
+      const len = Math.hypot(tx, tz), sp = sprinting ? gait.sprint : gait.walk
+      tx = (tx / len) * sp; tz = (tz / len) * sp
+    }
+    const grip = 1 - Math.exp(-(s.y > 0 ? 0.6 : gait.grip) * dt) // almost no control mid-air
+    s.vx += (tx - s.vx) * grip; s.vz += (tz - s.vz) * grip
+    p.x += s.vx * dt; p.z += s.vz * dt
+    const speed = Math.hypot(s.vx, s.vz)
+    if (speed > 0.3) {
+      const want = Math.atan2(s.vx, s.vz)
+      let d = want - root.current.rotation.y
+      d = Math.atan2(Math.sin(d), Math.cos(d))
+      root.current.rotation.y += d * Math.min(1, dt * 8)
     }
     for (const o of SOLIDS) {
       const ox = p.x - o.x, oz = p.z - o.z, d = Math.hypot(ox, oz)
       if (d < o.r && d > 0) { p.x = o.x + (ox / d) * o.r; p.z = o.z + (oz / d) * o.r }
     }
-    const d = Math.hypot(p.x, p.z)
-    if (d > WORLD_R) { p.x *= WORLD_R / d; p.z *= WORLD_R / d }
-    p.y = heightAt(p.x, p.z) // walk over dunes and into craters
+    const dist = Math.hypot(p.x, p.z)
+    if (dist > WORLD_R) { p.x *= WORLD_R / dist; p.z *= WORLD_R / dist }
+    p.y = heightAt(p.x, p.z)
 
     if (input.jump && s.y === 0 && !locked) s.vy = JUMP
     s.vy -= GRAVITY[planet] * dt
     s.y = Math.max(0, s.y + s.vy * dt)
     if (s.y === 0) s.vy = 0
+    const ground = s.y === 0
 
-    // Which pad are we on? Standing still on it for WORK_TIME = doing the job = choosing.
+    // Gait: hop height and leg swing grow with speed.
+    const k = Math.min(1, speed / gait.walk)
+    s.t += dt * speed * gait.cadence
+    const ph = s.t
+    body.current.position.y = s.y + (ground ? Math.abs(Math.sin(ph)) * gait.hop * k : 0)
+    body.current.rotation.x = 0.16 * k
+    const swing = (planet === 'mars' ? 0.55 : 0.32) * k
+    thighL.current.rotation.x = -Math.sin(ph) * swing
+    thighR.current.rotation.x = Math.sin(ph) * swing
+    shinL.current.rotation.x = 0.15 + Math.max(0, Math.sin(ph - 0.8)) * 0.8 * k
+    shinR.current.rotation.x = 0.15 + Math.max(0, -Math.sin(ph - 0.8)) * 0.8 * k
+
+    // Footprints + dust puff on every step.
+    const step = Math.sign(Math.sin(ph))
+    if (ground && speed > 1 && step !== s.step) {
+      s.step = step
+      const side = step > 0 ? 0.13 : -0.13, yaw = root.current.rotation.y
+      const fx = p.x + Math.cos(yaw) * side, fz = p.z - Math.sin(yaw) * side
+      dummy.position.set(fx, heightAt(fx, fz) + 0.03, fz); dummy.rotation.set(0, yaw, 0); dummy.scale.setScalar(1); dummy.updateMatrix()
+      prints.current.setMatrixAt(s.print, dummy.matrix); prints.current.instanceMatrix.needsUpdate = true
+      s.print = (s.print + 1) % PRINTS
+      const puff = puffs.current[s.puff]
+      if (puff) { puff.position.set(fx, heightAt(fx, fz) + 0.1, fz); s.life[s.puff] = 1 }
+      s.puff = (s.puff + 1) % PUFFS
+    }
+    puffs.current.forEach((m, i) => {
+      if (!m) return
+      s.life[i] = Math.max(0, s.life[i] - dt * 0.9) // dust hangs longer in low gravity
+      m.visible = s.life[i] > 0
+      m.scale.setScalar(0.15 + (1 - s.life[i]) * 0.6)
+      m.position.y += dt * 0.15
+      m.material.opacity = s.life[i] * 0.45
+    })
+
+    // Suit oxygen: drains outside, faster when sprinting; refills at the airlock.
+    if (!locked) {
+      const atAirlock = Math.hypot(p.x - AIRLOCK[0], p.z - AIRLOCK[1]) < REFILL_R
+      s.o2 = atAirlock ? Math.min(100, s.o2 + 35 * dt) : s.o2 - st.mission.o2Drain * dt * (sprinting ? 1.7 : 1)
+      if (s.o2 <= 0) st.suitEmpty()
+      else if (Math.round(s.o2) !== st.suitO2) st.setSuitO2(s.o2)
+    }
+
+    // Choice pads: stand still for WORK_TIME to do the job.
     let on = -1
-    pads.forEach(([x, z], i) => { if (s.y < 0.3 && Math.hypot(p.x - x, p.z - z) < PAD_R) on = i })
+    pads.forEach(([x, z], i) => { if (ground && Math.hypot(p.x - x, p.z - z) < PAD_R) on = i })
     if (on !== s.padIdx) { s.padIdx = on; s.progress = 0; s.done = false }
     const working = on !== -1 && !locked && !s.done
-    if (working) {
-      s.progress += dt
-      if (s.progress >= WORK_TIME) { s.done = true; choose(event.choices[on]) }
-    }
-    const k = working ? s.progress / WORK_TIME : 0
-    work.current.visible = working
-    work.current.scale.setScalar(Math.max(0.01, k) * PAD_R)
+    if (working) { s.progress += dt; if (s.progress >= WORK_TIME) { s.done = true; st.choose(st.event.choices[on]) } }
 
-    // Animation: walk swing, or arms up while working.
-    const ground = s.y === 0
-    const swing = moving && ground ? Math.sin(s.t * 9) * 0.6 : 0
-    body.current.position.y = s.y + (moving && ground ? Math.abs(Math.sin(s.t * 9)) * 0.07 : 0)
-    legL.current.rotation.x = swing
-    legR.current.rotation.x = -swing
-    armL.current.rotation.x = working ? -1.3 + Math.sin(state.clock.elapsedTime * 14) * 0.25 : -swing * 0.7
-    armR.current.rotation.x = working ? -1.3 - Math.sin(state.clock.elapsedTime * 14) * 0.25 : swing * 0.7
+    // Samples: stand on a site to scan it.
+    const near = st.samples.find((x) => !x.collected && Math.hypot(p.x - x.x, p.z - x.z) < 1.6)
+    const nearId = near && ground ? near.id : -1
+    if (nearId !== s.sampleId) { s.sampleId = nearId; s.scan = 0 }
+    const scanning = nearId !== -1 && !locked
+    if (scanning) { s.scan += dt; if (s.scan >= SCAN_TIME) { st.collectSample(nearId); s.sampleId = -1; s.scan = 0 } }
 
-    // Guide arrow toward the nearest pad.
-    let best = null, bestD = Infinity
-    pads.forEach(([x, z]) => { const dd = Math.hypot(x - p.x, z - p.z); if (dd < bestD) { bestD = dd; best = [x, z] } })
-    arrow.current.visible = !locked && !!best && bestD > 4
-    if (best) {
-      const a = Math.atan2(best[0] - p.x, best[1] - p.z)
-      arrow.current.position.set(p.x + Math.sin(a) * 1.6, p.y + 0.15, p.z + Math.cos(a) * 1.6)
-      arrow.current.rotation.set(0, a, 0)
+    work.current.visible = working || scanning
+    work.current.scale.setScalar(Math.max(0.01, working ? s.progress / WORK_TIME : s.scan / SCAN_TIME) * PAD_R)
+    workMat.current.color.set(scanning ? '#f59e0b' : '#facc15')
+
+    // Arms: swing while walking, reach forward while working or scanning.
+    const busy = working || scanning, tt = state.clock.elapsedTime
+    armL.current.rotation.x = busy ? -1.1 + Math.sin(tt * 12) * 0.15 : Math.sin(ph) * 0.35 * k
+    armR.current.rotation.x = busy ? -1.1 - Math.sin(tt * 12) * 0.15 : -Math.sin(ph) * 0.35 * k
+    foreL.current.rotation.x = busy ? -0.7 : -0.35 - 0.2 * k
+    foreR.current.rotation.x = busy ? -0.7 : -0.35 - 0.2 * k
+
+    // Guide arrows: red to the airlock when the tank is low, cyan to the nearest job, amber to the nearest sample.
+    const point = (obj, target, minD) => {
+      if (!target) { obj.visible = false; return }
+      const d = Math.hypot(target[0] - p.x, target[1] - p.z)
+      obj.visible = d > minD
+      const a = Math.atan2(target[0] - p.x, target[1] - p.z)
+      obj.position.set(p.x + Math.sin(a) * 1.5, p.y + 0.12, p.z + Math.cos(a) * 1.5)
+      obj.rotation.set(0, a, 0)
     }
+    const nearest = (pts) => pts.reduce((b, q) => (!b || Math.hypot(q[0] - p.x, q[1] - p.z) < Math.hypot(b[0] - p.x, b[1] - p.z) ? q : b), null)
+    const lowO2 = s.o2 < 30
+    point(arrow.current, lowO2 ? AIRLOCK : locked ? null : nearest(pads), lowO2 ? REFILL_R : 4)
+    arrowMat.current.color.set(lowO2 ? '#ef4444' : '#22d3ee')
+    point(sampleArrow.current, nearest(st.samples.filter((x) => !x.collected).map((x) => [x.x, x.z])), 3)
 
     // Third-person camera behind the player, rotated by yaw; never below the ground.
     const cx = p.x + Math.sin(cam.yaw) * CAM_DIST, cz = p.z + Math.cos(cam.yaw) * CAM_DIST
     camPos.set(cx, Math.max(p.y, heightAt(cx, cz)) + s.y * 0.5 + CAM_HEIGHT, cz)
-    state.camera.position.lerp(camPos, 1 - Math.exp(-6 * dt))
-    state.camera.lookAt(p.x, p.y + 1.4 + s.y * 0.5, p.z)
+    state.camera.position.lerp(camPos, 1 - Math.exp(-5 * dt))
+    state.camera.lookAt(p.x, p.y + 1.2 + s.y * 0.5, p.z)
   })
 
-  const suit = <meshStandardMaterial color={suitColor} roughness={0.75} />
+  // Human proportions: ~1.9 m tall in the suit, helmet about head-sized.
+  const suit = <meshStandardMaterial color={suitColor} roughness={0.8} />
   const joint = <meshStandardMaterial color="#9ca3af" roughness={0.6} />
-  const dark = <meshStandardMaterial color="#52525b" roughness={0.7} />
   return (
     <>
       <group ref={root} position={[6, 0, 17]}>
         <group ref={body}>
-          {/* torso + chest control box */}
-          <mesh position={[0, 1.08, 0]} castShadow><capsuleGeometry args={[0.36, 0.5, 6, 16]} />{suit}</mesh>
-          <mesh position={[0, 1.18, 0.33]} castShadow><boxGeometry args={[0.34, 0.22, 0.12]} /><meshStandardMaterial color="#cbd5e1" roughness={0.5} /></mesh>
-          <mesh position={[-0.08, 1.2, 0.395]}><boxGeometry args={[0.07, 0.07, 0.01]} /><meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} /></mesh>
-          <mesh position={[0.08, 1.2, 0.395]}><boxGeometry args={[0.07, 0.07, 0.01]} /><meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.8} /></mesh>
-          <mesh position={[0, 0.72, 0]}><torusGeometry args={[0.33, 0.05, 8, 24]} />{joint}</mesh>
-          {/* helmet: white shell, gold reflective visor, lamps */}
-          <mesh position={[0, 1.78, -0.03]} castShadow><sphereGeometry args={[0.34, 32, 20]} />{suit}</mesh>
-          <mesh position={[0, 1.79, 0.08]} rotation-x={-0.15}><sphereGeometry args={[0.3, 32, 20, 0, Math.PI * 2, 0, 1.35]} /><meshStandardMaterial color="#d4a017" metalness={1} roughness={0.08} envMapIntensity={2} /></mesh>
-          <mesh position={[0, 1.55, 0]} rotation-x={Math.PI / 2}><torusGeometry args={[0.24, 0.05, 8, 24]} />{joint}</mesh>
-          {[-0.22, 0.22].map((x) => <mesh key={x} position={[x, 1.98, 0.2]}><boxGeometry args={[0.08, 0.06, 0.06]} /><meshStandardMaterial color="#fef9c3" emissive="#fef08a" emissiveIntensity={1.5} /></mesh>)}
-          {/* life-support backpack with oxygen display */}
-          <mesh position={[0, 1.2, -0.42]} castShadow><boxGeometry args={[0.62, 0.78, 0.32]} /><meshStandardMaterial color="#e5e7eb" roughness={0.6} /></mesh>
-          <mesh position={[0, 1.28, -0.585]} rotation-y={Math.PI}><planeGeometry args={[0.42, 0.21]} /><meshBasicMaterial map={display} toneMapped={false} /></mesh>
-          {/* arms with dark gloves */}
-          {[[armL, -0.48], [armR, 0.48]].map(([ref, x]) => (
-            <group key={x} ref={ref} position={[x, 1.38, 0]}>
-              <mesh position={[0, -0.04, 0]}><sphereGeometry args={[0.15, 16, 12]} />{suit}</mesh>
-              <mesh position={[0, -0.32, 0]} castShadow><capsuleGeometry args={[0.12, 0.38, 4, 10]} />{suit}</mesh>
-              <mesh position={[0, -0.6, 0]}><sphereGeometry args={[0.1, 12, 10]} />{dark}</mesh>
-            </group>
-          ))}
-          {/* legs with grey boots */}
-          {[[legL, -0.17], [legR, 0.17]].map(([ref, x]) => (
-            <group key={x} ref={ref} position={[x, 0.62, 0]}>
-              <mesh position={[0, -0.24, 0]} castShadow><capsuleGeometry args={[0.15, 0.32, 4, 10]} />{suit}</mesh>
-              <mesh position={[0, -0.24, 0]} rotation-x={Math.PI / 2}><torusGeometry args={[0.15, 0.03, 6, 16]} />{joint}</mesh>
-              <mesh position={[0, -0.55, 0.05]} castShadow><boxGeometry args={[0.24, 0.16, 0.36]} />{dark}</mesh>
-            </group>
-          ))}
+          <SuitLeg x={-0.11} thigh={thighL} shin={shinL} color={suitColor} />
+          <SuitLeg x={0.11} thigh={thighR} shin={shinR} color={suitColor} />
+          {/* hips + hard upper torso */}
+          <mesh position={[0, 1.02, 0]} castShadow><capsuleGeometry args={[0.17, 0.1, 4, 16]} />{suit}</mesh>
+          <mesh position={[0, 1.08, 0]} rotation-x={Math.PI / 2}><torusGeometry args={[0.18, 0.025, 6, 20]} />{joint}</mesh>
+          <mesh position={[0, 1.34, 0]} scale={[1.18, 1, 0.85]} castShadow><capsuleGeometry args={[0.19, 0.28, 6, 16]} />{suit}</mesh>
+          {/* chest display & control module */}
+          <mesh position={[0, 1.3, 0.19]} castShadow><boxGeometry args={[0.24, 0.14, 0.08]} /><meshStandardMaterial color="#d1d5db" roughness={0.5} /></mesh>
+          <mesh position={[-0.05, 1.31, 0.232]}><boxGeometry args={[0.04, 0.04, 0.01]} /><meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} /></mesh>
+          <mesh position={[0.05, 1.31, 0.232]}><boxGeometry args={[0.04, 0.04, 0.01]} /><meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.8} /></mesh>
+          <SuitArm x={-0.3} arm={armL} fore={foreL} color={suitColor} />
+          <SuitArm x={0.3} arm={armR} fore={foreR} color={suitColor} />
+          {/* neck ring + helmet with gold visor and lamps */}
+          <mesh position={[0, 1.6, 0]} rotation-x={Math.PI / 2}><torusGeometry args={[0.14, 0.03, 8, 24]} />{joint}</mesh>
+          <mesh position={[0, 1.76, -0.02]} castShadow><sphereGeometry args={[0.17, 32, 20]} />{suit}</mesh>
+          <mesh position={[0, 1.765, 0.035]} rotation-x={-0.2}><sphereGeometry args={[0.155, 32, 20, 0, Math.PI * 2, 0, 1.3]} /><meshStandardMaterial color="#c9971a" metalness={1} roughness={0.07} envMapIntensity={2.2} /></mesh>
+          {[-0.12, 0.12].map((x) => <mesh key={x} position={[x, 1.86, 0.1]}><boxGeometry args={[0.05, 0.035, 0.04]} /><meshStandardMaterial color="#fef9c3" emissive="#fef08a" emissiveIntensity={1.5} /></mesh>)}
+          {/* life-support backpack with suit-oxygen display */}
+          <mesh position={[0, 1.33, -0.26]} castShadow><boxGeometry args={[0.44, 0.56, 0.2]} /><meshStandardMaterial color="#e5e7eb" roughness={0.6} /></mesh>
+          <mesh position={[0, 1.4, -0.362]} rotation-y={Math.PI}><planeGeometry args={[0.3, 0.15]} /><meshBasicMaterial map={display} toneMapped={false} /></mesh>
         </group>
         <mesh ref={work} rotation-x={-Math.PI / 2} position-y={0.06} visible={false}>
-          <circleGeometry args={[1, 40]} /><meshBasicMaterial color="#facc15" transparent opacity={0.55} />
+          <circleGeometry args={[1, 40]} /><meshBasicMaterial ref={workMat} color="#facc15" transparent opacity={0.55} />
         </mesh>
       </group>
-      <group ref={arrow} visible={false}>
-        <mesh rotation-x={Math.PI / 2}>{/* cone points +y; tip it forward (+z) */}
-          <coneGeometry args={[0.28, 0.8, 3]} />
-          <meshBasicMaterial color="#22d3ee" />
+      <instancedMesh ref={prints} args={[printGeo, null, PRINTS]} frustumCulled={false}>
+        <meshStandardMaterial color="#000000" transparent opacity={0.28} depthWrite={false} roughness={1} />
+      </instancedMesh>
+      {Array.from({ length: PUFFS }, (_, i) => (
+        <mesh key={i} ref={(m) => (puffs.current[i] = m)} visible={false}>
+          <sphereGeometry args={[1, 10, 8]} /><meshBasicMaterial color={DUST[planet]} transparent opacity={0} depthWrite={false} />
         </mesh>
+      ))}
+      <group ref={arrow} visible={false}>
+        <mesh rotation-x={Math.PI / 2}><coneGeometry args={[0.24, 0.7, 3]} /><meshBasicMaterial ref={arrowMat} color="#22d3ee" /></mesh>
+      </group>
+      <group ref={sampleArrow} visible={false}>
+        <mesh rotation-x={Math.PI / 2}><coneGeometry args={[0.18, 0.55, 3]} /><meshBasicMaterial color="#f59e0b" /></mesh>
       </group>
     </>
+  )
+}
+
+/** Science sample sites: a rock, a survey flag and an amber beacon you can see from far away. */
+function Samples() {
+  const samples = useGameStore((s) => s.samples)
+  const rockTex = useTexture(() => regolith(1))
+  return samples.filter((x) => !x.collected).map((x) => (
+    <group key={x.id} position={[x.x, heightAt(x.x, x.z), x.z]}>
+      <mesh position-y={0.25} castShadow><dodecahedronGeometry args={[0.4, 1]} /><meshStandardMaterial map={rockTex} color="#a8a29e" roughness={0.9} flatShading /></mesh>
+      <mesh rotation-x={-Math.PI / 2} position-y={0.05}><ringGeometry args={[1.4, 1.6, 40]} /><meshBasicMaterial color="#f59e0b" transparent opacity={0.8} /></mesh>
+      <Beam a={[0.7, 0, 0.3]} b={[0.7, 1.4, 0.3]} r={0.02} color="#e5e7eb" />
+      <mesh position={[0.86, 1.28, 0.3]}><planeGeometry args={[0.3, 0.2]} /><meshBasicMaterial color="#f97316" side={THREE.DoubleSide} /></mesh>
+      <mesh position-y={8}><cylinderGeometry args={[0.25, 0.6, 16, 12, 1, true]} /><meshBasicMaterial color="#f59e0b" transparent opacity={0.1} depthWrite={false} side={THREE.DoubleSide} /></mesh>
+      <TextSprite position={[0, 2.4, 0]} height={0.38} border="#f59e0b" color="#fde68a" lines={[`${x.icon} ${x.name}`, 'Stand here to collect']} />
+    </group>
+  ))
+}
+
+/** Oxygen refill point at the airlock. */
+function Airlock() {
+  const ring = useRef()
+  useFrame(({ clock }) => { ring.current.material.opacity = 0.45 + Math.sin(clock.elapsedTime * 3) * 0.25 })
+  return (
+    <group position={[AIRLOCK[0], 0, AIRLOCK[1]]}>
+      <mesh ref={ring} rotation-x={-Math.PI / 2} position-y={0.05}><ringGeometry args={[REFILL_R - 0.25, REFILL_R, 48]} /><meshBasicMaterial color="#67e8f9" transparent /></mesh>
+      {[-0.35, 0.35].map((x) => (
+        <mesh key={x} position={[x, 0.75, -1.2]} castShadow><cylinderGeometry args={[0.22, 0.22, 1.5, 16]} /><meshStandardMaterial color="#e5e7eb" metalness={0.4} roughness={0.35} /></mesh>
+      ))}
+      <mesh position={[0, 1.4, -1.2]}><boxGeometry args={[1, 0.12, 0.3]} /><meshStandardMaterial color="#0ea5e9" emissive="#0ea5e9" emissiveIntensity={0.6} /></mesh>
+      <TextSprite position={[0, 2.5, 0]} height={0.36} border="#67e8f9" color="#cffafe" lines={['🫧 Suit oxygen refill', 'Stand here to fill your tank']} />
+    </group>
   )
 }
 
@@ -709,7 +858,7 @@ function Sky({ planet, theme, flare }) {
   const jupiter = useTexture(jupiterMap)
   return (
     <>
-      <Stars radius={420} depth={60} count={9000} factor={6} saturation={0.1} fade speed={0.2} />
+      <Stars radius={420} depth={60} count={planet === 'moon' ? 5000 : 8000} factor={5} saturation={0} fade speed={0.15} />
       <mesh position={sun}><sphereGeometry args={[theme.sunSize, 32, 16]} /><meshBasicMaterial color={flare ? '#fdba74' : '#fffbeb'} toneMapped={false} /></mesh>
       <mesh position={sun}><sphereGeometry args={[theme.sunSize * (flare ? 3.2 : 2.2), 32, 16]} /><meshBasicMaterial color={flare ? '#fb923c' : '#fde68a'} transparent opacity={flare ? 0.3 : 0.12} depthWrite={false} /></mesh>
       {planet === 'europa' && (
@@ -813,7 +962,7 @@ export default function World3D() {
           <Lightformer form="ring" intensity={0.4} position={[0, 10, 0]} scale={8} rotation-x={Math.PI / 2} />
         </Environment>
         <ambientLight intensity={theme.ambient} />
-        <hemisphereLight args={[{ mars: '#fbbf8a', europa: '#f5d0a9' }[planet] ?? '#c7d2fe', theme.ground, theme.hemi]} />
+        <hemisphereLight args={[{ mars: '#fbbf8a', europa: '#f5d0a9' }[planet] ?? '#9db4ff', theme.ground, theme.hemi]} />{/* Moon: faint blue "earthshine" */}
         <directionalLight
           position={SUN_DIR.clone().multiplyScalar(70).toArray()} intensity={flare ? theme.sun * 1.15 : theme.sun} color={flare ? '#ffe4c4' : '#fffaf0'} castShadow
           shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.03}
@@ -832,6 +981,8 @@ export default function World3D() {
         <Rover />
         <ShieldDome res={res} flare={flare} />
         {event && <Pads choices={event.choices} stations={stations} disabled={!!fact} />}
+        <Samples />
+        <Airlock />
         {event && <Astronaut pads={pads} />}
       </Canvas>
       <DPad />

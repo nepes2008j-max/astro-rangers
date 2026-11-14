@@ -5,6 +5,27 @@ import { europaEvents } from '../data/europaEvents.js'
 import { fetchSpaceWeather, flareToEvent, cmeToEvent, stormToEvent } from '../lib/nasa.js'
 import { MISSIONS, missionById, starsFor } from '../data/missions.js'
 import { SUITS, creditsFor } from '../data/suits.js'
+import { SAMPLE_TYPES } from '../data/samples.js'
+
+/** Where the suit refills its oxygen: beside the dome's airlock door. */
+export const AIRLOCK = [-2.8, 6.6]
+export const RESCUE_COST = 15 // base oxygen used when the crew has to rescue you
+
+/** Sample sites spread around the base in different directions, at the mission's distance. */
+export function makeSamples(mission, rand = Math.random) {
+  const types = SAMPLE_TYPES[mission.planet]
+  const [min, max] = mission.sampleDist
+  const offset = rand() * Math.PI * 2
+  return Array.from({ length: mission.samples }, (_, i) => {
+    let x, z, tries = 0
+    do {
+      const a = offset + (i / mission.samples) * Math.PI * 2 + (rand() - 0.5) * 0.8
+      const d = min + rand() * (max - min)
+      x = Math.cos(a) * d; z = Math.sin(a) * d
+    } while (++tries < 20 && Math.hypot(x + 20, z - 16) < 5) // keep clear of the lander
+    return { id: i, x, z, ...types[i % types.length], collected: false }
+  })
+}
 
 const VITAL = ['power', 'oxygen', 'shielding'] // hitting 0 on any of these = game over
 
@@ -78,6 +99,52 @@ export const useGameStore = create((set, get) => ({
   ownedSuits: load().ownedSuits ?? ['white'],
   suit: load().suit ?? 'white',
   gained: 0, // credits from the last mission
+  samples: [], // this mission's sample sites
+  suitO2: 100, // the astronaut's own tank (%), separate from the base's oxygen
+  toast: null, // { title, text } pop-up after collecting a sample or a rescue
+  respawn: 0, // bumps when the astronaut is rescued back to the airlock
+  reason: null, // why a mission ended: 'resources' | 'objective'
+
+  collectSample: (id) => {
+    const { samples, res, log } = get()
+    const sm = samples.find((x) => x.id === id)
+    if (!sm || sm.collected) return
+    const done = samples.filter((x) => x.collected).length + 1
+    set({
+      samples: samples.map((x) => (x.id === id ? { ...x, collected: true } : x)),
+      res: applyEffects(res, { science: 10 }),
+      toast: { title: `${sm.icon} ${sm.name} collected! (${done}/${samples.length})`, text: sm.fact },
+      log: [`Collected ${sm.name}`, ...log],
+    })
+  },
+
+  setSuitO2: (v) => set({ suitO2: Math.max(0, Math.min(100, Math.round(v))) }),
+
+  /** Suit ran dry: the crew drags you back inside, which costs the base oxygen. */
+  suitEmpty: () => {
+    const { res, log, respawn } = get()
+    const next = applyEffects(res, { oxygen: -RESCUE_COST })
+    set({
+      res: next, suitO2: 100, respawn: respawn + 1, log: ['Rescued: suit oxygen ran out', ...log],
+      toast: { title: '🚨 Your suit ran out of oxygen!', text: `The crew rescued you, but the base used ${RESCUE_COST} oxygen. Watch your suit tank and refill at the 🫧 airlock.` },
+    })
+    if (isDead(next)) get().endMission('gameover', 'resources', next)
+  },
+
+  dismissToast: () => set({ toast: null }),
+
+  endMission: (result, reason, next) => {
+    const { mission, progress, credits } = get()
+    if (result === 'victory') {
+      const earned = starsFor(next.science)
+      const gained = creditsFor({ won: true, stars: earned, firstWin: !progress[mission.id] })
+      set({ res: next, fact: null, result, reason, screen: 'end', earned, gained, credits: credits + gained, progress: { ...progress, [mission.id]: Math.max(progress[mission.id] ?? 0, earned) } })
+    } else {
+      const gained = creditsFor({ won: false })
+      set({ res: next, fact: null, result, reason, screen: 'end', gained, credits: credits + gained })
+    }
+    get().persist()
+  },
 
   /** Everything that survives a page reload. */
   persist: () => { const { progress, credits, ownedSuits, suit } = get(); save({ progress, credits, ownedSuits, suit }) },
@@ -103,7 +170,7 @@ export const useGameStore = create((set, get) => ({
   startMission: (id = get().mission.id) => {
     const mission = missionById(id)
     const deck = buildDeck(mission, get().spaceWeather)
-    set({ screen: 'game', mission, planet: mission.planet, res: { ...mission.start, science: 0 }, sol: 1, deck, event: deck[0], fact: null, log: [], result: null })
+    set({ screen: 'game', mission, planet: mission.planet, res: { ...mission.start, science: 0 }, sol: 1, deck, event: deck[0], fact: null, log: [], result: null, reason: null, samples: makeSamples(mission), suitO2: 100, toast: null })
   },
 
   choose: (choice) => {
@@ -116,20 +183,13 @@ export const useGameStore = create((set, get) => ({
   },
 
   nextSol: () => {
-    const { res, sol, deck, mission, progress } = get()
+    const { res, sol, deck, mission, samples } = get()
     let next = res
     if (!isDead(next)) next = applyEffects(next, { power: -mission.drain.power, oxygen: -mission.drain.oxygen })
-    if (isDead(next)) {
-      const gained = creditsFor({ won: false })
-      set({ res: next, fact: null, result: 'gameover', screen: 'end', gained, credits: get().credits + gained })
-      return get().persist()
-    }
+    if (isDead(next)) return get().endMission('gameover', 'resources', next)
     if (sol >= mission.sols) {
-      const earned = starsFor(next.science)
-      const gained = creditsFor({ won: true, stars: earned, firstWin: !progress[mission.id] })
-      const best = { ...progress, [mission.id]: Math.max(progress[mission.id] ?? 0, earned) }
-      set({ res: next, fact: null, result: 'victory', screen: 'end', progress: best, earned, gained, credits: get().credits + gained })
-      return get().persist()
+      const objectiveDone = samples.every((x) => x.collected)
+      return get().endMission(objectiveDone ? 'victory' : 'gameover', objectiveDone ? null : 'objective', next)
     }
     set({ res: next, fact: null, sol: sol + 1, event: deck[sol] })
   },

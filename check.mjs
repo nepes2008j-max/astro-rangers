@@ -1,6 +1,6 @@
 // Run: npm run check — rules + plays every mission 1000x with a careful and a random player.
 import assert from 'node:assert'
-import { useGameStore as s, applyEffects, isDead, scaleEffects, buildDeck } from './src/store/useGameStore.js'
+import { useGameStore as s, applyEffects, isDead, scaleEffects, buildDeck, makeSamples, RESCUE_COST } from './src/store/useGameStore.js'
 import { MISSIONS, starsFor } from './src/data/missions.js'
 import { creditsFor, SUITS } from './src/data/suits.js'
 import snap from './src/data/nasaSnapshot.json' with { type: 'json' }
@@ -27,8 +27,9 @@ for (const m of MISSIONS) {
 }
 
 // --- play ---
-function play(id, pick) {
+function play(id, pick, collect = true) {
   s.getState().startMission(id)
+  if (collect) s.getState().samples.forEach((x) => s.getState().collectSample(x.id)) // the walking part is the player's skill
   while (s.getState().screen === 'game') {
     const { event, res, mission } = s.getState()
     s.getState().choose(pick(event.choices, res, mission))
@@ -62,6 +63,21 @@ s.setState({ progress: {} })
 assert.ok(s.getState().isUnlocked(1) && !s.getState().isUnlocked(2), 'only mission 1 starts unlocked')
 play(1, smart)
 assert.ok(s.getState().progress[1] >= 1 && s.getState().isUnlocked(2), 'winning unlocks the next mission')
+// --- objectives & suit oxygen ---
+for (const m of MISSIONS) {
+  const sm = makeSamples(m)
+  assert.equal(sm.length, m.samples, `${m.name}: sample count`)
+  sm.forEach((x) => { const d = Math.hypot(x.x, x.z); assert.ok(d >= m.sampleDist[0] - 0.01 && d <= m.sampleDist[1] + 0.01, `${m.name}: sample distance`) })
+}
+assert.equal(play(3, smart, false).reason, 'objective', 'surviving without the samples fails the mission')
+s.getState().startMission(3)
+const o2 = s.getState().res.oxygen
+s.getState().suitEmpty()
+assert.equal(s.getState().res.oxygen, o2 - RESCUE_COST, 'a rescue costs base oxygen')
+assert.equal(s.getState().suitO2, 100, 'the rescued astronaut gets a full tank')
+s.getState().collectSample(0); const sci = s.getState().res.science; s.getState().collectSample(0)
+assert.equal(s.getState().res.science, sci, 'a sample can only be collected once')
+
 // --- shop ---
 assert.equal(creditsFor({ won: false }), 5, 'a loss still pays a little')
 assert.equal(creditsFor({ won: true, stars: 3, firstWin: true }), 60, 'first 3-star win pays most')

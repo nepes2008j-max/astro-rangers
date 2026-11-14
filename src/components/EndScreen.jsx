@@ -8,7 +8,7 @@ export const Stars = ({ n, size = 'text-4xl' }) => (
 )
 
 export default function EndScreen() {
-  const { result, res, sol, startMission, go, mission, earned, gained, credits } = useGameStore()
+  const { result, res, sol, startMission, go, mission, earned, gained, credits, reason, samples } = useGameStore()
   const won = result === 'victory'
   const next = MISSIONS.find((m) => m.id === mission.id + 1)
   const lost = Object.entries({ power: '⚡ power', oxygen: '💨 oxygen', shielding: '🛡️ shields' })
@@ -18,13 +18,13 @@ export default function EndScreen() {
       <div className="text-7xl" aria-hidden>{won ? (next ? '🏆' : '🎖️') : '💥'}</div>
       <p className="text-sm font-bold tracking-widest text-slate-400">MISSION {mission.id}: {mission.name.toUpperCase()}</p>
       <h2 className={`text-3xl font-black ${won ? 'text-emerald-300' : 'text-red-400'}`}>
-        {won ? 'Mission Complete!' : 'Outpost Lost'}
+        {won ? 'Mission Complete!' : reason === 'objective' ? 'Objective Missed' : 'Outpost Lost'}
       </h2>
       {won && <Stars n={earned} />}
       <p className="text-slate-300">
         {won
           ? `You survived ${mission.sols} Sols! ${next ? `Mission ${next.id} "${next.name}" is unlocked.` : 'You beat every mission. You are a true Astro Ranger Commander!'}`
-          : `You ran out of ${lost} on Sol ${sol}. Try another strategy!`}
+          : reason === 'objective' ? `You survived, but the objective wasn't done: ${samples.filter((x) => x.collected).length} of ${samples.length} samples collected. Follow the orange arrow next time!` : `You ran out of ${lost} on Sol ${sol}. Try another strategy!`}
       </p>
       <p className="text-xl">Science collected: 🔬 <b>{res.science}</b></p>
       <p className="rounded-full border border-amber-400/50 bg-amber-400/10 px-4 py-1 font-bold text-amber-200">+{gained} credits · 💰 {credits} total</p>

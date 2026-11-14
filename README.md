@@ -11,6 +11,12 @@ Each win earns ⭐ (survive), ⭐⭐ (30+ science) or ⭐⭐⭐ (60+ science). P
 Tune them in `src/data/missions.js`. `npm run check` plays every mission and fails if a careful player
 can't win or if a mission is easier than the one before.
 
+## Objectives & suit oxygen
+Every mission sends you to collect science samples (rocks, soil, ice) at sites around the map; each one teaches a real fact.
+If the last Sol ends before you've collected them all, the mission fails. Your suit has its own oxygen tank that drains
+outside (faster when sprinting) and refills at the 🫧 airlock. If it runs out, the crew rescues you, but the base loses oxygen.
+Harder missions have more samples, farther away, and faster oxygen use (`samples`, `sampleDist`, `o2Drain` in `src/data/missions.js`).
+
 ## Suit Shop
 Every mission pays 💰 credits: 10 + 10 per ⭐ for a win, a 20-credit bonus the first time you beat a mission, and 5 for trying.
 Spend them on 8 suit colors in the shop (looks only, so the balance stays fair). Suits and prices live in `src/data/suits.js`.

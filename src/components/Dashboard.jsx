@@ -60,7 +60,9 @@ function OsdrStudy({ event }) {
 }
 
 export default function Dashboard() {
-  const { res, sol, event, fact, log, choose, nextSol, planet, mission } = useGameStore()
+  const { res, sol, event, fact, log, choose, nextSol, planet, mission, suitO2, samples, toast, dismissToast } = useGameStore()
+  const got = samples.filter((x) => x.collected).length
+  useEffect(() => { if (!toast) return; const t = setTimeout(dismissToast, 6000); return () => clearTimeout(t) }, [toast, dismissToast])
   const stations = assignStations(event.choices)
   useEffect(() => { fetchOsdrStudy(osdrTermFor(event)) }, [event]) // warm the cache before the fact popup opens
   const DRAIN = mission.drain
@@ -76,6 +78,21 @@ export default function Dashboard() {
           <h1 className="text-sm font-black tracking-widest text-cyan-300 drop-shadow">{{ mars: '🔴', europa: '🧊' }[planet] ?? '🌕'} MISSION {mission.id}: {mission.name.toUpperCase()}</h1>
           <span className="rounded-full border border-cyan-400/50 bg-slate-950/70 px-3 py-0.5 font-mono text-sm text-cyan-200">Sol {sol}/{mission.sols}</span>
         </header>
+        <section className="grid grid-cols-[2fr_1fr] gap-2">
+          <div className={`rounded-lg border bg-slate-950/75 px-2 py-1.5 backdrop-blur ${suitO2 < 30 ? 'animate-pulse border-red-500' : 'border-cyan-700'}`}>
+            <div className="flex justify-between text-xs">
+              <span>🧑‍🚀 Suit O₂ {suitO2 < 30 && <b className="text-red-400">· return to the 🫧 airlock!</b>}</span>
+              <b className={suitO2 < 30 ? 'text-red-400' : 'text-cyan-200'}>{suitO2}%</b>
+            </div>
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-800" role="meter" aria-label="Suit oxygen" aria-valuenow={suitO2} aria-valuemin={0} aria-valuemax={100}>
+              <div className={`h-full rounded-full transition-all duration-300 ${suitO2 < 30 ? 'bg-red-500' : 'bg-cyan-300'}`} style={{ width: `${suitO2}%` }} />
+            </div>
+          </div>
+          <div className={`rounded-lg border bg-slate-950/75 px-2 py-1.5 text-xs backdrop-blur ${got === samples.length ? 'border-emerald-500 text-emerald-300' : 'border-amber-500/60 text-amber-200'}`}>
+            <p className="font-bold">🎯 Samples {got}/{samples.length}</p>
+            <p className="text-[11px] text-slate-400">{got === samples.length ? 'Objective done!' : `Collect before Sol ${mission.sols} ends`}</p>
+          </div>
+        </section>
         <section className="grid grid-cols-4 gap-2">
           {RES.map((r) => <Bar key={r.id} {...r} value={res[r.id]} vital={r.id !== 'science'} />)}
         </section>
@@ -88,7 +105,7 @@ export default function Dashboard() {
           )}
           <h2 className="font-bold text-amber-200 md:text-lg">{event.title}</h2>
           <p className="mt-1 hidden text-sm text-slate-300 sm:block">{event.description}</p>
-          <p className="mt-2 hidden text-xs text-cyan-300 sm:block">🧑‍🚀 Walk to a glowing pad and stand on it to do the job<span className="hidden md:inline"> (WASD move · Shift sprint · Space jump · drag or Q/E to look)</span>, or tap:</p>
+          <p className="mt-2 hidden text-xs text-cyan-300 sm:block">🧑‍🚀 Stand on a glowing pad to choose, follow the 🟠 arrow to samples, refill at the 🫧 airlock<span className="hidden md:inline"> (WASD move · Shift sprint · Space jump · drag or Q/E to look)</span>, or tap:</p>
           <div className="mt-2 grid gap-2">
             {event.choices.map((c, i) => (
               <button key={c.text} onClick={() => choose(c)} disabled={!!fact}
@@ -109,6 +126,14 @@ export default function Dashboard() {
         </ul>
         <p className="mt-2 text-[11px] text-slate-500">Base uses ⚡{DRAIN.power} 💨{DRAIN.oxygen} per Sol</p>
       </aside>
+
+      {toast && !fact && (
+        <div role="status" className="absolute bottom-24 left-1/2 z-20 w-[min(26rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-amber-400/60 bg-slate-950/90 p-4 text-left shadow-[0_0_24px_#f59e0b44] md:bottom-6">
+          <p className="font-bold text-amber-200">{toast.title}</p>
+          <p className="mt-1 text-sm text-slate-200">{toast.text}</p>
+          <button onClick={dismissToast} className="mt-2 text-xs text-slate-400 underline">OK</button>
+        </div>
+      )}
 
       {fact && (
         <div className="absolute inset-0 z-30 grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true">
