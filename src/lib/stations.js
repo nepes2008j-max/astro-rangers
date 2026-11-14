@@ -1,7 +1,7 @@
 // Where each choice happens in the 3D base. Pure data + logic (no three.js) so the HUD and tests can use it.
 export const STATIONS = {
   shield: { name: 'Shield Generator', icon: '🛡️', pos: [-11, 6] },
-  solar: { name: 'Solar Array', icon: '⚡', pos: [13, -4] },
+  solar: { name: 'Solar Array', icon: '⚡', pos: [14, -4], padDist: 6 },
   greenhouse: { name: 'Greenhouse', icon: '🌱', pos: [-12, -11] },
   lab: { name: 'Science Lab', icon: '🔬', pos: [11, 11] },
   comms: { name: 'Comms Tower', icon: '📡', pos: [1, -17] },
@@ -36,10 +36,11 @@ export function assignStations(choices) {
   })
 }
 
-/** Pad sits 3.5 units in front of the station, toward the habitat. Returns [x, z]. */
+/** Pad sits in front of the station (padDist, default 3.5), toward the habitat. Returns [x, z]. */
 export function padFor(stationId) {
   const [x, z] = STATIONS[stationId].pos
-  if (stationId === 'habitat') return [0, 5.5]
+  if (stationId === 'habitat') return [0, 7.5] // in front of the dome's airlock
   const d = Math.hypot(x, z)
-  return [x - (x / d) * 3.5, z - (z / d) * 3.5]
+  const k = STATIONS[stationId].padDist ?? 3.5
+  return [x - (x / d) * k, z - (z / d) * k]
 }
