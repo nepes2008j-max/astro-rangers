@@ -1,0 +1,125 @@
+// Content file: non-coders can edit this. Effects are added to resources (0-100).
+// Keys: power, oxygen, shielding, science. Negative = cost.
+export const marsEvents = [
+  {
+    id: 'mars_solar_storm',
+    planet: 'mars',
+    title: 'DONKI Alert: Solar Storm Headed for Mars',
+    description: 'A burst of energetic particles from the Sun is racing toward Mars. The thin air will not stop it!',
+    nasa_source: 'NASA DONKI (Space Weather Database)',
+    nasa_fact: 'Mars has a very thin atmosphere and no global magnetic field, so it gives much less protection from solar particle storms than Earth does.',
+    choices: [
+      { text: 'Shelter in the shielded core', effects: { shielding: 10, power: -15, science: -10 }, feedback: 'Everyone is safe, but the shelter used lots of power and the outside work stopped.' },
+      { text: 'Finish the outdoor experiment first', effects: { science: 15, shielding: -25 }, feedback: 'Great data, but the crew soaked up extra radiation.' },
+    ],
+  },
+  {
+    id: 'mars_flare_warning',
+    planet: 'mars',
+    title: 'DONKI Alert: Solar Flare Warning',
+    description: 'The Sun just erupted with a solar flare. Mission Control has sent a warning.',
+    nasa_source: 'NASA DONKI (Space Weather Database)',
+    nasa_fact: 'Radio signals between Earth and Mars take about 4 to 24 minutes one way, so Mars crews must often decide things on their own.',
+    choices: [
+      { text: 'Act now on your own judgment', effects: { shielding: 10, oxygen: -10, power: -10 }, feedback: 'Quick thinking kept everyone safe, but the rush wasted air and power.' },
+      { text: 'Wait for orders from Earth', effects: { shielding: -15, science: 5 }, feedback: 'The reply came late, and the flare arrived before the crew was ready.' },
+    ],
+  },
+  {
+    id: 'mars_radiation_walk',
+    planet: 'mars',
+    title: 'Radiation Check Before the Long Walk',
+    description: 'Your radiation detector is reading high on the surface. A rock sample trip is planned.',
+    nasa_source: 'NASA Curiosity RAD (Radiation Assessment Detector)',
+    nasa_fact: 'The RAD instrument on the Curiosity rover measured radiation on the trip to Mars and on its surface, helping NASA plan how to protect astronauts.',
+    choices: [
+      { text: 'Cancel the trip and stay inside', effects: { science: -15, shielding: 5 }, feedback: 'Safe and sound, but no new rocks for the lab.' },
+      { text: 'Go, but take a shorter route', effects: { science: 10, shielding: -15, power: -5 }, feedback: 'You got some samples and a modest radiation dose.' },
+    ],
+  },
+  {
+    id: 'mars_muscle_loss',
+    planet: 'mars',
+    title: 'Weak Muscles and Bones',
+    description: 'After months in low gravity, the crew feels weak and wobbly during daily tasks.',
+    nasa_source: 'NASA OSDR (Open Science Data Repository)',
+    nasa_fact: 'Mars gravity is only about 38% of Earth\'s. In low gravity, muscles and bones can weaken, so astronauts exercise every day.',
+    choices: [
+      { text: 'Add extra exercise time', effects: { power: -10, science: -15, oxygen: -5 }, feedback: 'Stronger crew, but less lab time and more air used while exercising.' },
+      { text: 'Skip it and keep working', effects: { science: 10, oxygen: -10, shielding: -10 }, feedback: 'More work got done, but tired crew members made small mistakes.' },
+    ],
+  },
+  {
+    id: 'mars_sleep_shift',
+    planet: 'mars',
+    title: 'Sleepy Crew on a 24h 37min Day',
+    description: 'A Mars day is a bit longer than an Earth day. The crew is tired and grumpy.',
+    nasa_source: 'NASA OSDR (Open Science Data Repository)',
+    nasa_fact: 'A Mars day, called a sol, lasts about 24 hours and 37 minutes. NASA studies how sleep and body clocks change in space.',
+    choices: [
+      { text: 'Set lights to match the Mars sol', effects: { power: -15, science: 5 }, feedback: 'Body clocks reset, but the special lights need extra power.' },
+      { text: 'Keep the Earth schedule', effects: { science: -10, oxygen: -15 }, feedback: 'Everyone stayed in a routine, but a tired crew wasted air and slowed down.' },
+    ],
+  },
+  {
+    id: 'mars_isolation_stress',
+    planet: 'mars',
+    title: 'Homesick Crew',
+    description: 'Earth is just a tiny dot in the sky. Some crew members feel lonely and stressed.',
+    nasa_source: 'NASA OSDR (Open Science Data Repository)',
+    nasa_fact: 'NASA studies show that long isolation can affect mood and teamwork, so crews train and plan activities to stay mentally healthy.',
+    choices: [
+      { text: 'Hold a team game night', effects: { power: -10, science: -15, oxygen: 5 }, feedback: 'Spirits lifted, but work slowed and the lights stayed on late.' },
+      { text: 'Push through the schedule', effects: { science: 10, oxygen: -15, shielding: -10 }, feedback: 'Work continued, but grumpy teamwork caused some slip-ups.' },
+    ],
+  },
+  {
+    id: 'mars_dust_storm',
+    planet: 'mars',
+    title: 'Global Dust Storm!',
+    description: 'A giant dust cloud is covering the whole planet. The sky turns dark and your solar panels fade.',
+    nasa_source: 'NASA Opportunity Rover Mission',
+    nasa_fact: 'In 2018 a global dust storm blocked sunlight so much that the solar-powered Opportunity rover went silent after almost 15 years on Mars.',
+    choices: [
+      { text: 'Go into low-power mode', effects: { power: 5, science: -20, oxygen: -5 }, feedback: 'You saved energy, but the lab went quiet and the air system slowed.' },
+      { text: 'Keep full power and use the batteries', effects: { power: -25, science: 10 }, feedback: 'Research went on, but the batteries drained fast.' },
+      { text: 'Clean the panels in the storm', effects: { power: 5, shielding: -15, oxygen: -10 }, feedback: 'The panels got clearer, but the outdoor work was risky and tiring.' },
+    ],
+  },
+  {
+    id: 'mars_moxie_oxygen',
+    planet: 'mars',
+    title: 'Making Air from Mars',
+    description: 'Oxygen is running low. Mars air is mostly carbon dioxide, which you cannot breathe.',
+    nasa_source: 'NASA Perseverance Rover (MOXIE)',
+    nasa_fact: 'The MOXIE experiment on the Perseverance rover made oxygen from Mars carbon dioxide, showing future crews might make their own air.',
+    choices: [
+      { text: 'Run the oxygen maker at full blast', effects: { oxygen: 15, power: -25 }, feedback: 'Fresh air, but it used up a huge amount of power.' },
+      { text: 'Run it at half speed', effects: { oxygen: 5, power: -10, science: -5 }, feedback: 'A small boost in air and a smaller drop in power.' },
+    ],
+  },
+  {
+    id: 'mars_perchlorate_dust',
+    planet: 'mars',
+    title: 'Toxic Soil on the Airlock',
+    description: 'Red dust was carried inside on the suits. It could be harmful to breathe.',
+    nasa_source: 'NASA Phoenix Lander',
+    nasa_fact: 'The Phoenix lander found perchlorates in Mars soil. These salts can be harmful to people, so crews must keep dust out of the habitat.',
+    choices: [
+      { text: 'Deep-clean the whole habitat', effects: { oxygen: 10, power: -15, science: -15 }, feedback: 'The air is clean again, but cleaning took power and time.' },
+      { text: 'Just wipe the airlock', effects: { oxygen: -10, science: 5, shielding: -5 }, feedback: 'Quick, but some dust got into the air filters.' },
+    ],
+  },
+  {
+    id: 'mars_ingenuity_scout',
+    planet: 'mars',
+    title: 'Send the Scout Helicopter?',
+    description: 'You need a safe route to an interesting crater. A small helicopter drone could scout ahead.',
+    nasa_source: 'NASA Ingenuity Mars Helicopter',
+    nasa_fact: 'In 2021 Ingenuity made the first powered flight on another planet. Mars air is so thin that its blades had to spin very fast.',
+    choices: [
+      { text: 'Launch the helicopter', effects: { science: 15, power: -20 }, feedback: 'Fantastic photos! But charging the drone took a lot of power.' },
+      { text: 'Drive the rover blindly', effects: { science: 5, power: -10, shielding: -10 }, feedback: 'You arrived, but a bumpy path caused some damage.' },
+    ],
+  },
+]
