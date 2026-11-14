@@ -4,6 +4,7 @@ import { marsEvents } from '../data/marsEvents.js'
 import { europaEvents } from '../data/europaEvents.js'
 import { fetchSpaceWeather, flareToEvent, cmeToEvent, stormToEvent } from '../lib/nasa.js'
 import { MISSIONS, missionById, starsFor } from '../data/missions.js'
+import { SUITS, creditsFor } from '../data/suits.js'
 
 const VITAL = ['power', 'oxygen', 'shielding'] // hitting 0 on any of these = game over
 
@@ -73,6 +74,25 @@ export const useGameStore = create((set, get) => ({
   earned: 0, // stars from the last win
   spaceWeather: null, // { flares, cmes, storms, live }
   progress: load().progress ?? {}, // { [missionId]: best stars }
+  credits: load().credits ?? 0,
+  ownedSuits: load().ownedSuits ?? ['white'],
+  suit: load().suit ?? 'white',
+  gained: 0, // credits from the last mission
+
+  /** Everything that survives a page reload. */
+  persist: () => { const { progress, credits, ownedSuits, suit } = get(); save({ progress, credits, ownedSuits, suit }) },
+
+  /** Buy a suit (if affordable) or equip one already owned. Returns true on success. */
+  buySuit: (id) => {
+    const { ownedSuits, credits } = get()
+    const item = SUITS.find((x) => x.id === id)
+    if (!item) return false
+    if (ownedSuits.includes(id)) { set({ suit: id }); get().persist(); return true }
+    if (credits < item.price) return false
+    set({ credits: credits - item.price, ownedSuits: [...ownedSuits, id], suit: id })
+    get().persist()
+    return true
+  },
 
   go: (screen) => set({ screen }),
 
@@ -99,12 +119,17 @@ export const useGameStore = create((set, get) => ({
     const { res, sol, deck, mission, progress } = get()
     let next = res
     if (!isDead(next)) next = applyEffects(next, { power: -mission.drain.power, oxygen: -mission.drain.oxygen })
-    if (isDead(next)) return set({ res: next, fact: null, result: 'gameover', screen: 'end' })
+    if (isDead(next)) {
+      const gained = creditsFor({ won: false })
+      set({ res: next, fact: null, result: 'gameover', screen: 'end', gained, credits: get().credits + gained })
+      return get().persist()
+    }
     if (sol >= mission.sols) {
       const earned = starsFor(next.science)
+      const gained = creditsFor({ won: true, stars: earned, firstWin: !progress[mission.id] })
       const best = { ...progress, [mission.id]: Math.max(progress[mission.id] ?? 0, earned) }
-      save({ progress: best })
-      return set({ res: next, fact: null, result: 'victory', screen: 'end', progress: best, earned })
+      set({ res: next, fact: null, result: 'victory', screen: 'end', progress: best, earned, gained, credits: get().credits + gained })
+      return get().persist()
     }
     set({ res: next, fact: null, sol: sol + 1, event: deck[sol] })
   },

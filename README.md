@@ -11,6 +11,10 @@ Each win earns ⭐ (survive), ⭐⭐ (30+ science) or ⭐⭐⭐ (60+ science). P
 Tune them in `src/data/missions.js`. `npm run check` plays every mission and fails if a careful player
 can't win or if a mission is easier than the one before.
 
+## Suit Shop
+Every mission pays 💰 credits: 10 + 10 per ⭐ for a win, a 20-credit bonus the first time you beat a mission, and 5 for trying.
+Spend them on 8 suit colors in the shop (looks only, so the balance stays fair). Suits and prices live in `src/data/suits.js`.
+
 ## Controls
 - **WASD / arrows** move · **Shift** sprint · **Space** jump (low gravity!) · **drag or Q/E** turn the camera
 - Walk onto a glowing pad at a station (Shield Generator, Solar Array, Greenhouse, Science Lab, Comms Tower, Habitat) and stand still to do the job. Phones get an on-screen D-pad.
@@ -46,7 +50,6 @@ For the deployed site, add the same key as repo secret `NASA_API_KEY`.
 | `src/components/Dashboard.jsx` | HUD, event card, NASA fact popup |
 
 ## Roadmap
-1. Shop with credits and suit colors
-2. Sound effects and music
-3. More planets (Europa?) and more events per planet
-4. Teacher mode: a summary of the facts each kid learned
+1. Sound effects and music
+2. More planets (Europa?) and more events per planet
+3. Teacher mode: a summary of the facts each kid learned

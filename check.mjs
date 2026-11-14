@@ -2,6 +2,7 @@
 import assert from 'node:assert'
 import { useGameStore as s, applyEffects, isDead, scaleEffects, buildDeck } from './src/store/useGameStore.js'
 import { MISSIONS, starsFor } from './src/data/missions.js'
+import { creditsFor, SUITS } from './src/data/suits.js'
 import snap from './src/data/nasaSnapshot.json' with { type: 'json' }
 
 // --- rules ---
@@ -61,4 +62,18 @@ s.setState({ progress: {} })
 assert.ok(s.getState().isUnlocked(1) && !s.getState().isUnlocked(2), 'only mission 1 starts unlocked')
 play(1, smart)
 assert.ok(s.getState().progress[1] >= 1 && s.getState().isUnlocked(2), 'winning unlocks the next mission')
+// --- shop ---
+assert.equal(creditsFor({ won: false }), 5, 'a loss still pays a little')
+assert.equal(creditsFor({ won: true, stars: 3, firstWin: true }), 60, 'first 3-star win pays most')
+assert.equal(creditsFor({ won: true, stars: 1 }), 20)
+s.setState({ credits: 50, ownedSuits: ['white'], suit: 'white' })
+assert.ok(!s.getState().buySuit('gold'), 'cannot buy what you cannot afford')
+assert.equal(s.getState().credits, 50, 'failed purchase costs nothing')
+assert.ok(s.getState().buySuit('orange') && s.getState().suit === 'orange' && s.getState().credits === 10, 'buying deducts and equips')
+assert.ok(s.getState().buySuit('white') && s.getState().credits === 10, 'equipping an owned suit is free')
+assert.ok(SUITS[0].price === 0, 'the starting suit is free')
+s.setState({ credits: 0, progress: {} })
+play(1, smart)
+assert.equal(s.getState().credits, s.getState().gained, 'winning a mission adds credits')
+assert.ok(s.getState().gained >= 40, 'a first win includes the bonus')
 console.log('all checks passed')

@@ -4,8 +4,9 @@ import Welcome from './components/Welcome.jsx'
 import MissionMap from './components/MissionMap.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import EndScreen from './components/EndScreen.jsx'
+import BaseShop from './components/BaseShop.jsx'
 
-const screens = { welcome: Welcome, map: MissionMap, game: Dashboard, end: EndScreen }
+const screens = { welcome: Welcome, map: MissionMap, game: Dashboard, end: EndScreen, shop: BaseShop }
 
 export default function App() {
   const screen = useGameStore((s) => s.screen)

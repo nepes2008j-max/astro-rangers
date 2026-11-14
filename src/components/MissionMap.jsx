@@ -1,6 +1,8 @@
 import { useGameStore } from '../store/useGameStore.js'
 import { MISSIONS, COMING_SOON } from '../data/missions.js'
 import { Stars } from './EndScreen.jsx'
+import { SuitPreview } from './BaseShop.jsx'
+import { suitById } from '../data/suits.js'
 
 const fmt = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
@@ -61,12 +63,15 @@ function MissionNode({ m, offset }) {
 }
 
 export default function MissionMap() {
-  const { go, progress } = useGameStore()
+  const { go, progress, credits, suit } = useGameStore()
   const total = Object.values(progress).reduce((a, b) => a + b, 0)
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 text-center">
       <h2 className="text-2xl font-bold text-cyan-300">Mission Map</h2>
       <p className="text-sm text-slate-400">⭐ {total} / {MISSIONS.length * 3} stars · easiest at the top, hardest at the bottom</p>
+      <button onClick={() => go('shop')} className="flex items-center gap-2 rounded-full border border-amber-400/60 bg-amber-400/10 py-1 pl-1 pr-4 font-bold text-amber-200 hover:bg-amber-400/20">
+        <SuitPreview color={suitById(suit).color} size={36} /> 🛒 Suit Shop · 💰 {credits}
+      </button>
       <SpaceWeather />
       <ol className="flex flex-col items-center gap-5 py-2">
         {MISSIONS.flatMap((m, i) => [

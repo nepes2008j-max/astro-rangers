@@ -8,7 +8,7 @@ export const Stars = ({ n, size = 'text-4xl' }) => (
 )
 
 export default function EndScreen() {
-  const { result, res, sol, startMission, go, mission, earned } = useGameStore()
+  const { result, res, sol, startMission, go, mission, earned, gained, credits } = useGameStore()
   const won = result === 'victory'
   const next = MISSIONS.find((m) => m.id === mission.id + 1)
   const lost = Object.entries({ power: '⚡ power', oxygen: '💨 oxygen', shielding: '🛡️ shields' })
@@ -27,6 +27,7 @@ export default function EndScreen() {
           : `You ran out of ${lost} on Sol ${sol}. Try another strategy!`}
       </p>
       <p className="text-xl">Science collected: 🔬 <b>{res.science}</b></p>
+      <p className="rounded-full border border-amber-400/50 bg-amber-400/10 px-4 py-1 font-bold text-amber-200">+{gained} credits · 💰 {credits} total</p>
       {won && earned < 3 && <p className="text-xs text-slate-400">Collect 🔬 {earned < 2 ? 30 : 60}+ science for the next ⭐</p>}
       <div className="flex flex-wrap justify-center gap-3">
         {won && next && <button onClick={() => startMission(next.id)} className="rounded-xl bg-cyan-400 px-6 py-3 font-bold text-slate-950">Next mission →</button>}
@@ -34,6 +35,7 @@ export default function EndScreen() {
           {won ? 'Play again' : 'Try again'}
         </button>
         <button onClick={() => go('map')} className="rounded-xl border border-slate-600 px-6 py-3">Map</button>
+        <button onClick={() => go('shop')} className="rounded-xl border border-amber-400/60 px-6 py-3 text-amber-200">🛒 Shop</button>
       </div>
     </div>
   )

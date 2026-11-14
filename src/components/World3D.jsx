@@ -4,6 +4,7 @@ import { Stars, Environment, Lightformer } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../store/useGameStore.js'
 import { STATIONS, assignStations, padFor } from '../lib/stations.js'
+import { suitById } from '../data/suits.js'
 
 // ---------- tuning knobs ----------
 const WALK = 5
@@ -190,6 +191,7 @@ function Astronaut({ pads }) {
   const camPos = useMemo(() => new THREE.Vector3(), [])
   const planet = useGameStore((st) => st.planet)
   const oxygen = useGameStore((st) => st.res.oxygen)
+  const suitColor = useGameStore((st) => suitById(st.suit).color)
 
   // Backpack display: oxygen left, red when low.
   const display = useMemo(() => canvasTexture(128, 64, (g, w, h) => {
@@ -275,7 +277,7 @@ function Astronaut({ pads }) {
     state.camera.lookAt(p.x, p.y + 1.4 + s.y * 0.5, p.z)
   })
 
-  const suit = <meshStandardMaterial color="#eef0f2" roughness={0.75} />
+  const suit = <meshStandardMaterial color={suitColor} roughness={0.75} />
   const joint = <meshStandardMaterial color="#9ca3af" roughness={0.6} />
   const dark = <meshStandardMaterial color="#52525b" roughness={0.7} />
   return (
