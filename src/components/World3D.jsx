@@ -8,7 +8,7 @@ import { STATIONS, assignStations, padFor } from '../lib/stations.js'
 // ---------- tuning knobs ----------
 const WALK = 5
 const SPRINT = 9
-const GRAVITY = { moon: 2.5, mars: 5 } // ponytail: game-feel values; real ratio Moon:Mars is ~1.6:3.7 m/s²
+const GRAVITY = { moon: 2.5, mars: 5, europa: 2.1 } // ponytail: game-feel values; real: Moon 1.62, Mars 3.71, Europa 1.31 m/s²
 const JUMP = 4.5
 const WORLD_R = 120
 const PAD_R = 1.4
@@ -20,6 +20,8 @@ const FLAT_R = 34 // the base sits on a levelled area; terrain rolls outside it
 const THEMES = {
   moon: { ground: '#9a9aa0', rock: '#6b6a68', mountain: '#5a5a60', sky: '#000003', fog: null, sunSize: 9, ambient: 0.1, hemi: 0.18, sun: 3.4 },
   mars: { ground: '#c4683a', rock: '#7c3418', mountain: '#8a3b1c', sky: '#1c0905', fog: ['#4a1d0c', 90, 260], sunSize: 6, ambient: 0.28, hemi: 0.3, sun: 2.6 },
+  // Sunlight at Jupiter is ~25x weaker; kept brighter than real so kids can see.
+  europa: { ground: '#e4ebf1', rock: '#b8c4cf', mountain: '#c9d3dc', sky: '#000002', fog: null, sunSize: 2.5, ambient: 0.16, hemi: 0.3, sun: 2.1, icy: true },
 }
 
 // Shared input: keyboard, mouse drag and the touch D-pad all write here.
@@ -105,6 +107,34 @@ const regolith = (repeat) => canvasTexture(512, 512, (g, w, h) => {
     g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = Math.max(1, r * 0.25); g.beginPath(); g.arc(x - r * 0.15, y - r * 0.15, r, 3.4, 5.6); g.stroke()
   }
 }, repeat)
+
+// Europa: bright ice with reddish-brown cracks ("lineae") and very few craters (its surface is young).
+const iceTexture = (repeat) => canvasTexture(512, 512, (g, w, h) => {
+  const rand = rng(11)
+  g.fillStyle = '#eef3f7'; g.fillRect(0, 0, w, h)
+  for (let i = 0; i < 9000; i++) { const v = 205 + rand() * 50; g.fillStyle = `rgb(${v},${v + 4},${v + 10})`; g.fillRect(rand() * w, rand() * h, 1 + rand() * 3, 1 + rand() * 3) }
+  for (let i = 0; i < 26; i++) {
+    let x = rand() * w, y = rand() * h, a = rand() * Math.PI
+    g.strokeStyle = `rgba(${130 + rand() * 40},${70 + rand() * 30},${40 + rand() * 20},${0.35 + rand() * 0.4})`
+    g.lineWidth = 1 + rand() * 4
+    g.beginPath(); g.moveTo(x, y)
+    for (let k = 0; k < 14; k++) { a += (rand() - 0.5) * 0.35; x += Math.cos(a) * 30; y += Math.sin(a) * 30; g.lineTo(x, y) }
+    g.stroke()
+  }
+}, repeat)
+
+// Jupiter: tan/brown/white bands and the Great Red Spot.
+const jupiterMap = () => canvasTexture(512, 256, (g, w, h) => {
+  const bands = ['#e8dcc4', '#c9a27a', '#f2e8d5', '#b07a55', '#ead9bd', '#a8714d', '#f0e3c8', '#c49a72', '#e3d3b6']
+  for (let y = 0; y < h; y++) {
+    const t = y / h, i = Math.floor(t * bands.length + Math.sin(y * 0.35) * 0.4)
+    g.fillStyle = bands[Math.max(0, Math.min(bands.length - 1, i))]
+    g.fillRect(0, y, w, 1)
+  }
+  for (let i = 0; i < 3000; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.08})`; g.fillRect(Math.random() * w, Math.random() * h, 6 + Math.random() * 20, 1) }
+  g.fillStyle = '#b5482e'; g.beginPath(); g.ellipse(w * 0.62, h * 0.64, 26, 14, 0, 0, 7); g.fill()
+  g.fillStyle = 'rgba(230,140,100,0.6)'; g.beginPath(); g.ellipse(w * 0.62, h * 0.64, 16, 8, 0, 0, 7); g.fill()
+})
 
 const solarCells = () => canvasTexture(256, 160, (g, w, h) => {
   g.fillStyle = '#0b1a3a'; g.fillRect(0, 0, w, h)
@@ -629,7 +659,7 @@ function Instanced({ items, children }) {
 const rx = (i) => (hash(i, 1.7) - 0.5) * 0.5
 
 function Terrain({ theme }) {
-  const ground = useTexture(() => regolith(90))
+  const ground = useTexture(() => (theme.icy ? iceTexture(40) : regolith(90)))
   const rockTex = useTexture(() => regolith(1))
   const geo = useMemo(() => {
     const g = new THREE.PlaneGeometry(520, 520, 220, 220)
@@ -660,7 +690,7 @@ function Terrain({ theme }) {
   return (
     <>
       <mesh geometry={geo} receiveShadow>
-        <meshStandardMaterial map={ground} bumpMap={ground} bumpScale={1.2} color={theme.ground} roughness={1} vertexColors />
+        <meshStandardMaterial map={ground} bumpMap={ground} bumpScale={1.2} color={theme.ground} roughness={theme.icy ? 0.55 : 1} vertexColors />
       </mesh>
       <Instanced items={rocks}><dodecahedronGeometry args={[1, 1]} /><meshStandardMaterial map={rockTex} bumpMap={rockTex} bumpScale={2} color={theme.rock} roughness={0.95} flatShading /></Instanced>
       <Instanced items={mountains}><sphereGeometry args={[0.5, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial map={rockTex} color={theme.mountain} roughness={1} flatShading /></Instanced>
@@ -674,12 +704,23 @@ const SUN_DIR = new THREE.Vector3(0.62, 0.3, -0.72).normalize()
 function Sky({ planet, theme, flare }) {
   const sun = SUN_DIR.clone().multiplyScalar(380)
   const earth = useTexture(earthMap)
+  const jupiter = useTexture(jupiterMap)
   return (
     <>
       <Stars radius={420} depth={60} count={9000} factor={6} saturation={0.1} fade speed={0.2} />
       <mesh position={sun}><sphereGeometry args={[theme.sunSize, 32, 16]} /><meshBasicMaterial color={flare ? '#fdba74' : '#fffbeb'} toneMapped={false} /></mesh>
       <mesh position={sun}><sphereGeometry args={[theme.sunSize * (flare ? 3.2 : 2.2), 32, 16]} /><meshBasicMaterial color={flare ? '#fb923c' : '#fde68a'} transparent opacity={flare ? 0.3 : 0.12} depthWrite={false} /></mesh>
-      {planet === 'moon' ? (
+      {planet === 'europa' && (
+        <>
+          <group position={[-120, 52, -320]} rotation={[0.1, 0.6, 0.05]}>
+            <mesh><sphereGeometry args={[70, 64, 32]} /><meshStandardMaterial map={jupiter} emissive="#3b2a1a" emissiveIntensity={0.35} roughness={0.9} /></mesh>
+          </group>
+          <TextSprite position={[-120, -26, -320]} height={6} border="" color="#fde68a" lines={['🪐 Jupiter – 11 Earths wide!']} />
+          <mesh position={[160, 140, -260]}><sphereGeometry args={[0.9, 12, 8]} /><meshBasicMaterial color="#93c5fd" /></mesh>
+          <TextSprite position={[160, 134, -260]} height={4} border="" color="#7dd3fc" lines={['🌍 Earth – over 600 million km away']} />
+        </>
+      )}
+      {planet === 'europa' ? null : planet === 'moon' ? (
         <group position={[-170, 120, -260]}>
           <mesh rotation={[0.4, 2, 0]}><sphereGeometry args={[26, 64, 32]} /><meshStandardMaterial map={earth} emissive="#1e3a8a" emissiveIntensity={0.25} roughness={0.8} /></mesh>
           <mesh scale={1.08}><sphereGeometry args={[26, 32, 16]} /><meshBasicMaterial color="#60a5fa" transparent opacity={0.1} depthWrite={false} side={THREE.BackSide} /></mesh>
@@ -770,7 +811,7 @@ export default function World3D() {
           <Lightformer form="ring" intensity={0.4} position={[0, 10, 0]} scale={8} rotation-x={Math.PI / 2} />
         </Environment>
         <ambientLight intensity={theme.ambient} />
-        <hemisphereLight args={[planet === 'mars' ? '#fbbf8a' : '#c7d2fe', theme.ground, theme.hemi]} />
+        <hemisphereLight args={[{ mars: '#fbbf8a', europa: '#f5d0a9' }[planet] ?? '#c7d2fe', theme.ground, theme.hemi]} />
         <directionalLight
           position={SUN_DIR.clone().multiplyScalar(70).toArray()} intensity={flare ? theme.sun * 1.15 : theme.sun} color={flare ? '#ffe4c4' : '#fffaf0'} castShadow
           shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.03}

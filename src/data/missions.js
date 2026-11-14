@@ -15,7 +15,21 @@ export const MISSIONS = [
   { id: 7, name: 'Red Planet Explorer', planet: 'mars', sols: 10, start: { power: 100, oxygen: 100, shielding: 100 }, drain: { power: 2, oxygen: 2 }, harm: 1.1, weather: 2, goal: '10 Sols on Mars, far from help.' },
   { id: 8, name: 'Dust Storm Season', planet: 'mars', sols: 10, start: { power: 85, oxygen: 100, shielding: 100 }, drain: { power: 2, oxygen: 2 }, harm: 1.1, weather: 2, goal: 'Dust blocks the Sun. Power is precious.' },
   { id: 9, name: 'Mars Marathon', planet: 'mars', sols: 12, start: { power: 90, oxygen: 90, shielding: 90 }, drain: { power: 2, oxygen: 2 }, harm: 1.15, weather: 3, goal: '12 Sols on Mars with less of everything. Plan ahead!' },
-  { id: 10, name: 'Commander Challenge', planet: 'mars', sols: 13, start: { power: 90, oxygen: 90, shielding: 90 }, drain: { power: 2, oxygen: 2 }, harm: 1.15, weather: 3, goal: 'The hardest mission. Only true Astro Rangers survive.' },
+  { id: 10, name: 'Mars Commander', planet: 'mars', sols: 13, start: { power: 90, oxygen: 90, shielding: 90 }, drain: { power: 2, oxygen: 2 }, harm: 1.15, weather: 3, goal: 'The hardest Mars mission. Only true Astro Rangers survive.' },
+  { id: 11, name: 'Europa Landing', planet: 'europa', sols: 7, start: { power: 100, oxygen: 100, shielding: 100 }, drain: { power: 2, oxygen: 2 }, harm: 1, weather: 1, goal: 'Touch down on the ice moon of Jupiter!' },
+  { id: 12, name: 'Ice Explorer', planet: 'europa', sols: 10, start: { power: 100, oxygen: 100, shielding: 100 }, drain: { power: 2, oxygen: 2 }, harm: 1.1, weather: 2, goal: 'Explore the cracked ice for 10 Sols.' },
+  { id: 13, name: 'Radiation Belt', planet: 'europa', sols: 10, start: { power: 100, oxygen: 100, shielding: 75 }, drain: { power: 2, oxygen: 2 }, harm: 1.15, weather: 3, goal: "Jupiter's radiation is fierce and your shields start weak." },
+  { id: 14, name: 'Ocean Hunters', planet: 'europa', sols: 12, start: { power: 90, oxygen: 90, shielding: 90 }, drain: { power: 2, oxygen: 2 }, harm: 1.15, weather: 3, goal: 'Search for the hidden ocean under the ice.' },
+  { id: 15, name: 'Jupiter Commander', planet: 'europa', sols: 14, start: { power: 80, oxygen: 80, shielding: 80 }, drain: { power: 3, oxygen: 2 }, harm: 1.3, weather: 3, goal: 'The hardest mission in the game.' },
+]
+
+// Shown on the map as "coming soon" stops (no missions yet).
+export const COMING_SOON = [
+  { name: 'Mercury', icon: '🪨' },
+  { name: 'Venus', icon: '🟡' },
+  { name: 'Titan (Saturn)', icon: '🪐' },
+  { name: 'Uranus', icon: '🔵' },
+  { name: 'Neptune', icon: '🌀' },
 ]
 
 export const missionById = (id) => MISSIONS.find((m) => m.id === id) ?? MISSIONS[0]

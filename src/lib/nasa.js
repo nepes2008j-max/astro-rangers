@@ -123,6 +123,9 @@ export const OSDR_TERMS = {
   mars_sleep_shift: 'circadian',
   mars_isolation_stress: 'behavior',
   mars_radiation_walk: 'radiation',
+  europa_crew_radiation: 'radiation',
+  europa_muscle: 'muscle atrophy',
+  europa_sleep: 'circadian',
 }
 export const osdrTermFor = (event) => OSDR_TERMS[event?.id] ?? (event?.nasa_source?.includes('OSDR') ? 'spaceflight' : null)
 

@@ -1,5 +1,5 @@
 import { useGameStore } from '../store/useGameStore.js'
-import { MISSIONS } from '../data/missions.js'
+import { MISSIONS, COMING_SOON } from '../data/missions.js'
 import { Stars } from './EndScreen.jsx'
 
 const fmt = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -32,22 +32,26 @@ function SpaceWeather() {
 }
 
 // Duolingo-style winding path: mission 1 at the top, each node swings left/right.
-const OFFSET = [0, 60, 90, 60, 0, -60, -90, -60, 0, 60]
+const offset = (i) => Math.round(Math.sin(i * 0.8) * 85)
+const PLANETS = {
+  moon: { icon: '🌕', ring: 'border-cyan-300 bg-slate-800 text-cyan-100 shadow-[0_0_24px_#22d3ee88]' },
+  mars: { icon: '🔴', ring: 'border-orange-400 bg-slate-800 text-orange-100 shadow-[0_0_24px_#fb923c88]' },
+  europa: { icon: '🧊', ring: 'border-sky-200 bg-slate-800 text-sky-50 shadow-[0_0_24px_#bae6fd88]' },
+}
+const SECTIONS = { 6: ['🚀 ON TO MARS', 'border-orange-400/40 text-orange-300'], 11: ['🪐 ON TO JUPITER: EUROPA', 'border-sky-300/40 text-sky-200'] }
 
 function MissionNode({ m, offset }) {
   const { startMission, progress, isUnlocked } = useGameStore()
   const stars = progress[m.id] ?? 0
   const open = isUnlocked(m.id)
   const isNext = open && !stars
-  const mars = m.planet === 'mars'
-  const ring = !open ? 'border-slate-700 bg-slate-900 text-slate-500'
-    : mars ? 'border-orange-400 bg-slate-800 text-orange-100 shadow-[0_0_24px_#fb923c88]'
-    : 'border-cyan-300 bg-slate-800 text-cyan-100 shadow-[0_0_24px_#22d3ee88]'
+  const p = PLANETS[m.planet]
+  const ring = open ? p.ring : 'border-slate-700 bg-slate-900 text-slate-500'
   return (
     <li className="flex flex-col items-center" style={{ transform: `translateX(${offset}px)` }}>
       <button onClick={() => startMission(m.id)} disabled={!open} aria-label={`Mission ${m.id}: ${m.name}${open ? '' : ' (locked)'}`}
         className={`grid h-20 w-20 place-items-center rounded-full border-4 transition hover:scale-105 disabled:hover:scale-100 ${ring} ${isNext ? 'animate-bounce [animation-duration:2s]' : ''}`}>
-        <span className="text-3xl leading-none">{open ? (mars ? '🔴' : '🌕') : '🔒'}</span>
+        <span className="text-3xl leading-none">{open ? p.icon : '🔒'}</span>
         <span className="-mt-3 text-xs font-black">{m.id}</span>
       </button>
       <p className={`mt-1 text-sm font-bold ${open ? 'text-slate-100' : 'text-slate-500'}`}>{m.name}</p>
@@ -65,10 +69,21 @@ export default function MissionMap() {
       <p className="text-sm text-slate-400">⭐ {total} / {MISSIONS.length * 3} stars · easiest at the top, hardest at the bottom</p>
       <SpaceWeather />
       <ol className="flex flex-col items-center gap-5 py-2">
-        {MISSIONS.map((m, i) => (
-          <MissionNode key={m.id} m={m} offset={OFFSET[i]} />
-        )).flatMap((node, i) => i === 5 ? [<li key="mars" className="w-full border-t border-dashed border-orange-400/40 pt-3 text-xs font-bold tracking-widest text-orange-300">🚀 ON TO MARS</li>, node] : [node])}
+        {MISSIONS.flatMap((m, i) => [
+          SECTIONS[m.id] && <li key={`s${m.id}`} className={`w-full border-t border-dashed pt-3 text-xs font-bold tracking-widest ${SECTIONS[m.id][1]}`}>{SECTIONS[m.id][0]}</li>,
+          <MissionNode key={m.id} m={m} offset={offset(i)} />,
+        ])}
       </ol>
+      <section className="w-full border-t border-dashed border-slate-600 pt-3">
+        <p className="text-xs font-bold tracking-widest text-slate-400">🔭 MORE WORLDS COMING SOON</p>
+        <ul className="mt-3 flex flex-wrap justify-center gap-2">
+          {COMING_SOON.map((w) => (
+            <li key={w.name} className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-sm text-slate-400">
+              <span aria-hidden>{w.icon}</span>{w.name}<span aria-hidden>🔒</span>
+            </li>
+          ))}
+        </ul>
+      </section>
       <button onClick={() => go('welcome')} className="mb-6 text-sm text-slate-500 underline">Back</button>
     </div>
   )

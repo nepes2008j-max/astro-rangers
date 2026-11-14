@@ -1,0 +1,125 @@
+// Content file: non-coders can edit this. Effects are added to resources (0-100).
+// Keys: power, oxygen, shielding, science. Negative = cost.
+export const europaEvents = [
+  {
+    id: 'europa_radiation_belt',
+    planet: 'europa',
+    title: 'Jupiter Radiation Surge',
+    description: 'Jupiter\'s radiation belts are extra strong today. Your detectors are beeping loudly!',
+    nasa_source: 'NASA Galileo Mission',
+    nasa_fact: 'Europa orbits inside the intense radiation belts of Jupiter, so its icy surface is bathed in strong radiation.',
+    choices: [
+      { text: 'Hide in the shielded core', effects: { shielding: 10, power: -15, science: -10 }, feedback: 'Everyone is safe, but the shelter used lots of power and the outside work paused.' },
+      { text: 'Keep drilling and wear heavy suits', effects: { science: 15, shielding: -25 }, feedback: 'Great ice samples, but the crew soaked up extra radiation.' },
+    ],
+  },
+  {
+    id: 'europa_radiation_shield_ice',
+    planet: 'europa',
+    title: 'Ice Wall for Shielding',
+    description: 'Engineers suggest piling thick ice around the outpost to block radiation.',
+    nasa_source: 'NASA Europa Clipper',
+    nasa_fact: 'NASA\'s Europa Clipper launched in October 2024. Its electronics are protected by a thick metal vault because of Jupiter\'s radiation.',
+    choices: [
+      { text: 'Build the ice wall', effects: { shielding: 15, power: -15, science: -10 }, feedback: 'The wall helps a lot, but the digging used power and lab time.' },
+      { text: 'Skip it and save energy', effects: { power: 5, shielding: -15 }, feedback: 'Power is saved, but more radiation seeps inside.' },
+    ],
+  },
+  {
+    id: 'europa_radiation_sensors',
+    planet: 'europa',
+    title: 'Radiation Sensors Glitch',
+    description: 'Radiation glitches are scrambling the outpost\'s computers.',
+    nasa_source: 'NASA Galileo Mission',
+    nasa_fact: 'The Galileo spacecraft studied Europa from 1995 to 2003, and Jupiter\'s radiation often upset its instruments.',
+    choices: [
+      { text: 'Reboot everything now', effects: { power: -15, science: -5, shielding: 5 }, feedback: 'Systems recover, but the restart drained power.' },
+      { text: 'Ignore it and keep working', effects: { science: 10, shielding: -15, power: -5 }, feedback: 'Work continued, but bad readings hid a radiation leak.' },
+    ],
+  },
+  {
+    id: 'europa_crew_radiation',
+    planet: 'europa',
+    title: 'Tiny Cells Under Attack',
+    description: 'The doctor warns that radiation can damage the cells in your body.',
+    nasa_source: 'NASA OSDR (Open Science Data Repository)',
+    nasa_fact: 'Space radiation can damage the DNA inside cells. NASA studies this to find better ways to protect astronauts.',
+    choices: [
+      { text: 'Shorten outdoor shifts', effects: { shielding: 10, science: -20 }, feedback: 'The crew is healthier, but less science gets done.' },
+      { text: 'Add medical checkups', effects: { shielding: 5, power: -10, oxygen: -5 }, feedback: 'Checkups caught small problems early, at a cost of power and air.' },
+    ],
+  },
+  {
+    id: 'europa_muscle',
+    planet: 'europa',
+    title: 'Floaty Feet, Weak Muscles',
+    description: 'Europa has weak gravity, and the crew feels their muscles getting soft.',
+    nasa_source: 'NASA OSDR (Open Science Data Repository)',
+    nasa_fact: 'Europa\'s gravity is even weaker than our Moon\'s: a kid who weighs 30 kg on Earth would feel like just 4 kg there! In low gravity, muscles and bones get weaker, so exercise is vital.',
+    choices: [
+      { text: 'Add daily workouts', effects: { power: -10, science: -10, oxygen: -5 }, feedback: 'Stronger crew, but less lab time and more air used.' },
+      { text: 'Skip it and keep working', effects: { science: 10, oxygen: -10, shielding: -10 }, feedback: 'More got done, but tired crew members made small mistakes.' },
+    ],
+  },
+  {
+    id: 'europa_sleep',
+    planet: 'europa',
+    title: 'Sleepless in the Dark',
+    description: 'Jupiter is huge in the sky and the days feel strange. Many crew members cannot sleep well.',
+    nasa_source: 'NASA OSDR (Open Science Data Repository)',
+    nasa_fact: 'Astronauts on long missions can struggle with sleep and feel isolated, so NASA studies ways to keep crews rested and happy.',
+    choices: [
+      { text: 'Set strict quiet hours', effects: { science: -15, power: 5 }, feedback: 'The crew sleeps better, but fewer experiments run.' },
+      { text: 'Hold a movie night', effects: { power: -10, oxygen: -5, science: 5 }, feedback: 'Spirits rise, though the lights and gear used extra power.' },
+    ],
+  },
+  {
+    id: 'europa_ice_cracks',
+    planet: 'europa',
+    title: 'Cracks in the Ice',
+    description: 'You spot reddish-brown streaks and cracks stretching across the ice near the outpost.',
+    nasa_source: 'NASA Galileo Mission',
+    nasa_fact: 'Europa\'s surface is covered with long cracks and streaks called lineae, which may show where the ice shell has moved.',
+    choices: [
+      { text: 'Study the cracks up close', effects: { science: 20, power: -10, shielding: -10 }, feedback: 'Wonderful discoveries, but the trip cost power and exposed the crew.' },
+      { text: 'Stay away from the cracks', effects: { science: -10, power: 5 }, feedback: 'Safe and calm, but a science chance slipped by.' },
+    ],
+  },
+  {
+    id: 'europa_plume',
+    planet: 'europa',
+    title: 'Possible Water Plume',
+    description: 'Sensors detect a faint spray rising from the ice. It could be a water plume!',
+    nasa_source: 'NASA Hubble Space Telescope',
+    nasa_fact: 'Hubble saw hints of possible water plumes on Europa. If real, they could let scientists sample the ocean without drilling.',
+    choices: [
+      { text: 'Send a rover to collect it', effects: { science: 20, power: -15, shielding: -10 }, feedback: 'Amazing sample! The rover used a lot of power and the crew was exposed.' },
+      { text: 'Watch from the outpost', effects: { science: 5, oxygen: -5 }, feedback: 'Safe, but the view from far away told you only a little.' },
+    ],
+  },
+  {
+    id: 'europa_ocean_drill',
+    planet: 'europa',
+    title: 'Drilling Toward the Ocean',
+    description: 'Under the ice shell lies a salty ocean. Should the crew drill down, or melt ice for air?',
+    nasa_source: 'NASA Europa Clipper',
+    nasa_fact: 'Europa has an ice shell over a salty ocean that may hold more water than all of Earth\'s oceans combined. Europa Clipper will study if it could support life.',
+    choices: [
+      { text: 'Drill deeper for science', effects: { science: 20, power: -20, shielding: -10 }, feedback: 'Great data from deep ice, but the drill ate power.' },
+      { text: 'Melt ice to make oxygen', effects: { oxygen: 15, power: -15 }, feedback: 'Fresh air for everyone, but the heaters used a lot of power.' },
+      { text: 'Check the drill plans again', effects: { power: 5 }, feedback: 'A small, safe pause to plan better.' },
+    ],
+  },
+  {
+    id: 'europa_weak_sun',
+    planet: 'europa',
+    title: 'Dim Sunlight, Low Power',
+    description: 'The Sun looks tiny from here, and your solar panels barely make any power.',
+    nasa_source: 'NASA Europa Clipper',
+    nasa_fact: 'Jupiter is about 5 times farther from the Sun than Earth, so sunlight at Europa is about 25 times weaker. Europa Clipper uses huge solar panels to catch it.',
+    choices: [
+      { text: 'Turn off extra lights and gear', effects: { power: 10, science: -15 }, feedback: 'Power is saved, but many experiments paused.' },
+      { text: 'Melt ice for oxygen anyway', effects: { oxygen: 15, power: -20 }, feedback: 'The air is fresh, but the batteries are getting low.' },
+    ],
+  },
+];

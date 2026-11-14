@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { nasaEvents } from '../data/nasaEvents.js'
 import { marsEvents } from '../data/marsEvents.js'
+import { europaEvents } from '../data/europaEvents.js'
 import { fetchSpaceWeather, flareToEvent, cmeToEvent, stormToEvent } from '../lib/nasa.js'
 import { MISSIONS, missionById, starsFor } from '../data/missions.js'
 
@@ -37,9 +38,9 @@ export function spaceWeatherEvents(sw, planet) {
 // One card per Sol: real space weather at Sol 1, 4, 7 (as many as the mission asks for),
 // content events fill the rest. Long missions reshuffle the content pool.
 export function buildDeck(mission, sw) {
-  const pool = (mission.planet === 'mars' ? marsEvents : nasaEvents).filter((e) => e.planet === mission.planet)
+  const pool = { moon: nasaEvents, mars: marsEvents, europa: europaEvents }[mission.planet].filter((e) => e.planet === mission.planet)
   const live = spaceWeatherEvents(sw, mission.planet).slice(0, mission.weather)
-  const generic = live.length ? pool.filter((e) => !/flare|storm|sep_/.test(e.id)) : pool
+  const generic = live.length ? pool.filter((e) => !/flare|storm|sep_/.test(e.id)) : pool // avoid doubling up with real DONKI cards
   const deck = []
   while (deck.length < mission.sols - live.length) {
     const round = shuffle(generic)

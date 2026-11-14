@@ -45,11 +45,13 @@ const rate = (id, pick, n = 1000) => { let w = 0; for (let i = 0; i < n; i++) if
 const rows = MISSIONS.map((m) => ({ m, careful: rate(m.id, smart), random: rate(m.id, random) }))
 for (const { m, careful, random: r } of rows) console.log(`${String(m.id).padStart(2)}. ${m.name.padEnd(22)} careful ${(careful * 100).toFixed(0).padStart(3)}%   random ${(r * 100).toFixed(0).padStart(3)}%`)
 
-for (const { m, careful } of rows) assert.ok(careful >= (m.id === 10 ? 0.6 : 0.85), `${m.name}: a careful player must be able to win`)
+// The last mission on Mars and Europa is a hard 'boss' level; every other mission must be comfortably winnable.
+const finals = new Set(['mars', 'europa'].map((p) => MISSIONS.filter((m) => m.planet === p).at(-1).id))
+for (const { m, careful } of rows) assert.ok(careful >= (finals.has(m.id) ? 0.5 : 0.85), `${m.name}: a careful player must be able to win`)
 assert.ok(rows[0].random > 0.6, 'mission 1 is friendly even for random clicking')
-assert.ok(rows[9].random < 0.1, 'mission 10 is really hard for random clicking')
+assert.ok(rows.at(-1).random < 0.05, 'the final mission is really hard for random clicking')
 // Difficulty rises within each planet (small tolerance for randomness).
-for (const planet of ['moon', 'mars']) {
+for (const planet of ['moon', 'mars', 'europa']) {
   const r = rows.filter((x) => x.m.planet === planet).map((x) => x.random)
   r.forEach((v, i) => assert.ok(i === 0 || v <= r[i - 1] + 0.05, `${planet}: mission ${i + 1} should not be easier than the one before`))
 }

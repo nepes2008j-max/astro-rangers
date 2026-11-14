@@ -73,7 +73,7 @@ export default function Dashboard() {
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 grid gap-2 p-3">
         <header className="flex items-center justify-between">
-          <h1 className="text-sm font-black tracking-widest text-cyan-300 drop-shadow">{planet === 'mars' ? '🔴' : '🌕'} MISSION {mission.id}: {mission.name.toUpperCase()}</h1>
+          <h1 className="text-sm font-black tracking-widest text-cyan-300 drop-shadow">{{ mars: '🔴', europa: '🧊' }[planet] ?? '🌕'} MISSION {mission.id}: {mission.name.toUpperCase()}</h1>
           <span className="rounded-full border border-cyan-400/50 bg-slate-950/70 px-3 py-0.5 font-mono text-sm text-cyan-200">Sol {sol}/{mission.sols}</span>
         </header>
         <section className="grid grid-cols-4 gap-2">
