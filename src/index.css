@@ -1,3 +1,8 @@
 @import "tailwindcss";
 
 body { @apply bg-slate-950 text-slate-100 antialiased; }
+
+/* Teacher mode prints as a clean black-on-white worksheet. */
+@media print {
+  body { background: #fff; color: #000; }
+}

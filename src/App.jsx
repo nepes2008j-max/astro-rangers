@@ -6,8 +6,9 @@ import MissionMap from './components/MissionMap.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import EndScreen from './components/EndScreen.jsx'
 import BaseShop from './components/BaseShop.jsx'
+import TeacherMode from './components/TeacherMode.jsx'
 
-const screens = { welcome: Welcome, map: MissionMap, game: Dashboard, end: EndScreen, shop: BaseShop }
+const screens = { welcome: Welcome, map: MissionMap, game: Dashboard, end: EndScreen, shop: BaseShop, teacher: TeacherMode }
 
 export default function App() {
   const screen = useGameStore((s) => s.screen)
@@ -16,7 +17,7 @@ export default function App() {
   useEffect(() => connectAudio(useGameStore), []) // music + sound effects follow game state
   const Screen = screens[screen]
   return (
-    <main className="min-h-dvh bg-[radial-gradient(ellipse_at_top,#1e1b4b,#020617_60%)] px-4 py-6">
+    <main className="min-h-dvh bg-[radial-gradient(ellipse_at_top,#1e1b4b,#020617_60%)] px-4 py-6 print:bg-none print:bg-white print:p-0">
       <Screen />
     </main>
   )

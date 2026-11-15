@@ -27,6 +27,13 @@ plus effects for choices, samples, footsteps, oxygen refill, low-oxygen alarm, r
 new Sols, purchases and win/lose. Toggle 🎵 music and 🔊 effects on the welcome screen, in the top bar or in the pause menu.
 Code: `src/lib/audio.js`.
 
+## Teacher mode
+Open **👩‍🏫 Teacher mode** from the welcome screen or level map. It shows every real NASA fact a student has discovered
+(45 in total), grouped by topic: space weather, life & health in space, planet science, and rock & ice samples. Each fact
+lists its NASA source, and each topic has discussion questions. **Show all facts** turns it into lesson material; **Print**
+gives a clean worksheet, **Copy summary** pastes into a document, and **Reset progress** clears a shared classroom computer.
+Facts are saved in the browser as they are discovered (`src/lib/facts.js`).
+
 ## Controls
 - **WASD / arrows** move · **Shift** sprint · **Space** jump (low gravity!) · **drag or Q/E** turn the camera
 - Walk onto a glowing pad at a station (Shield Generator, Solar Array, Greenhouse, Science Lab, Comms Tower, Habitat) and stand still to do the job. Phones get an on-screen D-pad.
@@ -63,4 +70,3 @@ For the deployed site, add the same key as repo secret `NASA_API_KEY`.
 
 ## Roadmap
 1. More planets (Europa?) and more events per planet
-2. Teacher mode: a summary of the facts each kid learned

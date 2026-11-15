@@ -98,7 +98,22 @@ export const useGameStore = create((set, get) => ({
   credits: load().credits ?? 0,
   ownedSuits: load().ownedSuits ?? ['white'],
   suit: load().suit ?? 'white',
+  learned: load().learned ?? {}, // facts discovered, for Teacher mode: { [factKey]: { count, first } }
   gained: 0, // credits from the last mission
+
+  /** Remember that a fact was shown to the player. */
+  learn: (key) => {
+    const { learned } = get()
+    const prev = learned[key]
+    set({ learned: { ...learned, [key]: { count: (prev?.count ?? 0) + 1, first: prev?.first ?? new Date().toISOString() } } })
+    get().persist()
+  },
+
+  /** Teacher mode: wipe this browser's progress (for shared classroom computers). */
+  resetProgress: () => {
+    set({ progress: {}, learned: {}, credits: 0, ownedSuits: ['white'], suit: 'white' })
+    get().persist()
+  },
   samples: [], // this mission's sample sites
   suitO2: 100, // the astronaut's own tank (%), separate from the base's oxygen
   toast: null, // { title, text } pop-up after collecting a sample or a rescue
@@ -116,6 +131,7 @@ export const useGameStore = create((set, get) => ({
       toast: { title: `${sm.icon} ${sm.name} collected! (${done}/${samples.length})`, text: sm.fact },
       log: [`Collected ${sm.name}`, ...log],
     })
+    get().learn(`sample:${sm.name}`)
   },
 
   setSuitO2: (v) => set({ suitO2: Math.max(0, Math.min(100, Math.round(v))) }),
@@ -154,7 +170,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   /** Everything that survives a page reload. */
-  persist: () => { const { progress, credits, ownedSuits, suit } = get(); save({ progress, credits, ownedSuits, suit }) },
+  persist: () => { const { progress, credits, ownedSuits, suit, learned } = get(); save({ progress, credits, ownedSuits, suit, learned }) },
 
   /** Buy a suit (if affordable) or equip one already owned. Returns true on success. */
   buySuit: (id) => {
@@ -187,6 +203,7 @@ export const useGameStore = create((set, get) => ({
       fact: { feedback: choice.feedback, fact: event.nasa_fact, source: event.nasa_source },
       log: [`Sol ${sol}: ${choice.text}`, ...log],
     })
+    get().learn(event.id)
   },
 
   nextSol: () => {

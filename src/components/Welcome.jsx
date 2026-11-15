@@ -31,6 +31,7 @@ export default function Welcome() {
         Start Mission 🚀
       </button>
       <div className="flex items-center gap-2 text-sm text-slate-300">Music & sound <SoundToggles /></div>
+      <button onClick={() => go('teacher')} className="text-sm text-slate-300 underline hover:text-cyan-200">👩‍🏫 Teacher mode: see the NASA facts students learned</button>
       <p className="text-xs text-slate-400">Ages 10–16 · Keyboard, mouse or touch · NASA Space Apps Challenge</p>
     </div>
   )

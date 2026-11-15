@@ -176,6 +176,7 @@ export default function MissionMap() {
       <button onClick={() => go('shop')} className="flex items-center gap-2 rounded-full border border-amber-400/60 bg-amber-400/10 py-1 pl-1 pr-4 font-bold text-amber-200 hover:bg-amber-400/20">
         <SuitPreview color={suitById(suit).color} size={36} /> 🛒 Suit Shop · 💰 {credits}
       </button>
+      <button onClick={() => go('teacher')} className="text-sm text-slate-300 underline hover:text-cyan-200">👩‍🏫 Teacher mode · facts learned</button>
       <SpaceWeather />
       {WORLDS.map((w) => {
         const missions = MISSIONS.filter((m) => m.planet === w.planet)
