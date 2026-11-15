@@ -66,6 +66,16 @@ export default function Dashboard() {
   const stations = assignStations(event.choices)
   useEffect(() => { fetchOsdrStudy(osdrTermFor(event)) }, [event]) // warm the cache before the fact popup opens
   const DRAIN = mission.drain
+
+  // Left panels can be hidden to see the 3D world (button or H key); remembered per browser.
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem('astro-panel') !== 'hidden' } catch { return true } })
+  const toggle = () => setOpen((v) => { try { localStorage.setItem('astro-panel', v ? 'hidden' : 'open') } catch { /* private mode */ } return !v })
+  useEffect(() => {
+    const onKey = (e) => { if (e.code === 'KeyH' && !e.repeat) toggle() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-slate-950">
       <Suspense fallback={<p className="grid h-full place-items-center text-cyan-300">Landing on the Moon…</p>}>
@@ -97,13 +107,25 @@ export default function Dashboard() {
           {RES.map((r) => <Bar key={r.id} {...r} value={res[r.id]} vital={r.id !== 'science'} />)}
         </section>
 
-        <section className="pointer-events-auto max-w-md rounded-2xl border border-cyan-400/30 bg-slate-950/80 p-3 backdrop-blur md:p-4">
+        {!open && (
+          <button onClick={toggle} aria-expanded="false" aria-controls="event-panel"
+            className="pointer-events-auto flex max-w-md items-center gap-2 justify-self-start rounded-xl border border-cyan-400/40 bg-slate-950/85 px-3 py-2 text-left text-sm backdrop-blur hover:border-cyan-300">
+            <span aria-hidden>📋</span>
+            <span className="truncate font-semibold text-amber-200">{event.title}</span>
+            <span className="shrink-0 text-xs text-cyan-300">Show <kbd className="rounded border border-slate-600 px-1">H</kbd></span>
+          </button>
+        )}
+        <section id="event-panel" hidden={!open} className="pointer-events-auto relative max-w-md rounded-2xl border border-cyan-400/30 bg-slate-950/80 p-3 backdrop-blur md:p-4">
+          <button onClick={toggle} aria-expanded="true" aria-controls="event-panel" title="Hide panel (H)"
+            className="absolute right-2 top-2 rounded-lg border border-slate-600 px-2 py-0.5 text-xs text-slate-300 hover:border-cyan-300 hover:text-cyan-200">
+            Hide ✕
+          </button>
           {event.live !== undefined && (
             <span className="mb-1 inline-block rounded bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-300">
               📡 {event.live ? 'LIVE NASA DATA' : 'REAL NASA DATA'}
             </span>
           )}
-          <h2 className="font-bold text-amber-200 md:text-lg">{event.title}</h2>
+          <h2 className="pr-16 font-bold text-amber-200 md:text-lg">{event.title}</h2>
           <p className="mt-1 hidden text-sm text-slate-300 sm:block">{event.description}</p>
           <p className="mt-2 hidden text-xs text-cyan-300 sm:block">🧑‍🚀 Stand on a glowing pad to choose, follow the 🟠 arrow to samples, refill at the 🫧 airlock<span className="hidden md:inline"> (WASD move · Shift sprint · Space jump · drag or Q/E to look)</span>, or tap:</p>
           <div className="mt-2 grid gap-2">
@@ -119,7 +141,7 @@ export default function Dashboard() {
         </section>
       </div>
 
-      <aside className="pointer-events-none absolute bottom-4 left-4 z-20 hidden w-64 rounded-xl border border-slate-700 bg-slate-950/70 p-3 md:block">
+      <aside className={`pointer-events-none absolute bottom-4 left-4 z-20 hidden w-64 rounded-xl border border-slate-700 bg-slate-950/70 p-3 ${open ? 'md:block' : ''}`}>
         <h3 className="mb-1 text-xs font-bold text-slate-400">MISSION LOG</h3>
         <ul className="max-h-32 space-y-0.5 overflow-hidden font-mono text-xs text-slate-400">
           {log.length ? log.map((l, i) => <li key={i}>{l}</li>) : <li>Awaiting orders…</li>}
@@ -142,10 +164,10 @@ export default function Dashboard() {
             <div className="mt-4 rounded-xl bg-indigo-500/15 p-4">
               <p className="text-sm font-bold text-indigo-300">🛰️ NASA FACT</p>
               <p className="mt-1 text-slate-200">{fact.fact}</p>
-              <p className="mt-2 text-xs text-slate-500">Source: {fact.source}</p>
+              <p className="mt-2 text-xs text-indigo-200/80">Source: {fact.source}</p>
             </div>
             <OsdrStudy event={event} />
-            <button onClick={nextSol} autoFocus className="mt-5 w-full rounded-xl bg-cyan-400 py-3 font-bold text-slate-950">
+            <button onClick={nextSol} autoFocus className="mt-5 w-full rounded-xl bg-cyan-400 py-3 font-bold text-cyan-950">
               {sol >= mission.sols ? 'Finish mission' : 'Next Sol →'}
             </button>
           </div>
