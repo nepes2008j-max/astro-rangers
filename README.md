@@ -21,6 +21,12 @@ Harder missions have more samples, farther away, and faster oxygen use (`samples
 Every mission pays 💰 credits: 10 + 10 per ⭐ for a win, a 20-credit bonus the first time you beat a mission, and 5 for trying.
 Spend them on 8 suit colors in the shop (looks only, so the balance stays fair). Suits and prices live in `src/data/suits.js`.
 
+## Music & sound
+All audio is generated in the browser with the Web Audio API (no audio files): ambient music that changes per world,
+plus effects for choices, samples, footsteps, oxygen refill, low-oxygen alarm, rescue, radiation (Geiger crackle),
+new Sols, purchases and win/lose. Toggle 🎵 music and 🔊 effects on the welcome screen, in the top bar or in the pause menu.
+Code: `src/lib/audio.js`.
+
 ## Controls
 - **WASD / arrows** move · **Shift** sprint · **Space** jump (low gravity!) · **drag or Q/E** turn the camera
 - Walk onto a glowing pad at a station (Shield Generator, Solar Array, Greenhouse, Science Lab, Comms Tower, Habitat) and stand still to do the job. Phones get an on-screen D-pad.
@@ -56,6 +62,5 @@ For the deployed site, add the same key as repo secret `NASA_API_KEY`.
 | `src/components/Dashboard.jsx` | HUD, event card, NASA fact popup |
 
 ## Roadmap
-1. Sound effects and music
-2. More planets (Europa?) and more events per planet
-3. Teacher mode: a summary of the facts each kid learned
+1. More planets (Europa?) and more events per planet
+2. Teacher mode: a summary of the facts each kid learned

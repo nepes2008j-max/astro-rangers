@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { useGameStore, scaleEffects } from '../store/useGameStore.js'
 import { STATIONS, assignStations } from '../lib/stations.js'
 import { fetchOsdrStudy, osdrTermFor } from '../lib/nasa.js'
+import SoundToggles from './SoundToggles.jsx'
 
 const World3D = lazy(() => import('./World3D.jsx'))
 const LETTERS = ['A', 'B', 'C']
@@ -121,6 +122,7 @@ function PauseMenu() {
             <button onClick={() => startMission(mission.id)} className={`${btn} border border-slate-600 text-slate-100`}>↻ Restart level</button>
             <button onClick={() => setView('help')} className={`${btn} border border-slate-600 text-slate-100`}>❓ How to play</button>
             <button onClick={() => setView('confirm')} className={`${btn} border border-red-400/60 text-red-200`}>🚪 Exit to level map</button>
+            <div className="mt-2 flex items-center justify-center gap-2 text-sm text-slate-300">Sound <SoundToggles /></div>
           </div>
         )}
         {view === 'help' && (
@@ -176,6 +178,7 @@ export default function Dashboard() {
           <h1 className="text-sm font-black tracking-widest text-cyan-300 drop-shadow">{{ mars: '🔴', europa: '🧊' }[planet] ?? '🌕'} MISSION {mission.id}: {mission.name.toUpperCase()}</h1>
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-cyan-400/50 bg-slate-950/70 px-3 py-0.5 font-mono text-sm text-cyan-200">Sol {sol}/{mission.sols}</span>
+            <SoundToggles className="pointer-events-auto hidden sm:flex" />
             <button onClick={() => setPaused(true)} title="Pause (Esc)"
               className="pointer-events-auto rounded-full border border-slate-500 bg-slate-950/80 px-3 py-0.5 text-sm font-bold text-slate-100 hover:border-cyan-300">
               ⏸ Menu

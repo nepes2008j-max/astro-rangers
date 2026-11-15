@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useGameStore, AIRLOCK } from '../store/useGameStore.js'
 import { STATIONS, assignStations, padFor } from '../lib/stations.js'
 import { suitById } from '../data/suits.js'
+import { sfx } from '../lib/audio.js'
 
 // ---------- tuning knobs ----------
 const GRAVITY = { moon: 2.5, mars: 5, europa: 2.1 } // ponytail: game-feel values; real: Moon 1.62, Mars 3.71, Europa 1.31 m/s²
@@ -331,6 +332,7 @@ function Astronaut({ pads }) {
       const puff = puffs.current[s.puff]
       if (puff) { puff.position.set(fx, heightAt(fx, fz) + 0.1, fz); s.life[s.puff] = 1 }
       s.puff = (s.puff + 1) % PUFFS
+      sfx('step', planet)
     }
     puffs.current.forEach((m, i) => {
       if (!m) return

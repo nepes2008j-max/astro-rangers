@@ -1,4 +1,5 @@
 import { useGameStore } from '../store/useGameStore.js'
+import SoundToggles from './SoundToggles.jsx'
 
 const HOW = [
   ['🎯', 'Complete the objective', 'Collect science samples around the base before the last Sol (day) ends.'],
@@ -29,6 +30,7 @@ export default function Welcome() {
         className="rounded-2xl bg-cyan-400 px-10 py-4 text-xl font-bold text-cyan-950 shadow-[0_0_24px_#22d3ee] transition hover:scale-105 active:scale-95">
         Start Mission 🚀
       </button>
+      <div className="flex items-center gap-2 text-sm text-slate-300">Music & sound <SoundToggles /></div>
       <p className="text-xs text-slate-400">Ages 10–16 · Keyboard, mouse or touch · NASA Space Apps Challenge</p>
     </div>
   )
