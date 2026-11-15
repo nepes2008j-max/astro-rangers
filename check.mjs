@@ -92,4 +92,16 @@ s.setState({ credits: 0, progress: {} })
 play(1, smart)
 assert.equal(s.getState().credits, s.getState().gained, 'winning a mission adds credits')
 assert.ok(s.getState().gained >= 40, 'a first win includes the bonus')
+
+// --- pause / exit ---
+s.getState().startMission(2)
+assert.ok(s.getState().briefing, 'every level opens with a briefing')
+s.getState().beginPlay()
+const before = { credits: s.getState().credits, progress: { ...s.getState().progress } }
+s.getState().setPaused(true)
+s.getState().exitToMap()
+assert.equal(s.getState().screen, 'map', 'exit goes back to the level map')
+assert.ok(!s.getState().paused, 'exit closes the pause menu')
+assert.equal(s.getState().credits, before.credits, 'exiting gives no credits')
+assert.deepEqual(s.getState().progress, before.progress, 'exiting keeps earlier stars')
 console.log('all checks passed')

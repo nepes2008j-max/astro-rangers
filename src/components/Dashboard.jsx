@@ -59,8 +59,92 @@ function OsdrStudy({ event }) {
   )
 }
 
+// Rules + controls, shown in the mission briefing and the pause menu.
+function HowToPlay() {
+  const rows = [
+    ['🎯', 'Objective', 'Collect every science sample (follow the 🟠 arrow) before the last Sol ends.'],
+    ['⚖️', 'Each Sol', 'A real crisis appears. Walk to a glowing pad (or tap a choice) to decide. Every choice has a cost.'],
+    ['💀', 'You lose if', '⚡ power, 💨 oxygen or 🛡️ shields reach 0, or the samples are not collected in time.'],
+    ['🧑‍🚀', 'Suit oxygen', 'Drains outside, faster when sprinting. Refill at the 🫧 airlock. Running out costs the base oxygen.'],
+  ]
+  return (
+    <div className="grid gap-3 text-left">
+      <ul className="grid gap-2">
+        {rows.map(([icon, title, text]) => (
+          <li key={title} className="flex gap-2 text-sm"><span aria-hidden>{icon}</span><span><b className="text-slate-100">{title}:</b> <span className="text-slate-300">{text}</span></span></li>
+        ))}
+      </ul>
+      <div className="rounded-xl bg-slate-800/70 p-3 text-xs text-slate-300">
+        <p className="mb-1 font-bold text-slate-100">Controls</p>
+        <p><b>WASD / arrows</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>Mouse drag</b> or <b>Q/E</b> turn camera</p>
+        <p><b>H</b> hide panel · <b>Esc</b> pause menu · Phone: on-screen buttons</p>
+      </div>
+    </div>
+  )
+}
+
+function Briefing() {
+  const { mission, beginPlay, exitToMap } = useGameStore()
+  return (
+    <div className="absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="brief-title">
+      <div className="w-full max-w-lg rounded-2xl border border-cyan-400/50 bg-slate-900 p-5 shadow-[0_0_40px_#22d3ee44]">
+        <p className="text-xs font-bold tracking-widest text-cyan-300">MISSION BRIEFING · LEVEL {mission.id}</p>
+        <h2 id="brief-title" className="mt-1 text-2xl font-black text-white">{mission.name}</h2>
+        <p className="mt-1 text-slate-300">{mission.goal}</p>
+        <div className="my-4 grid grid-cols-3 gap-2 text-center text-sm">
+          <p className="rounded-xl bg-slate-800 p-2"><b className="block text-lg text-white">{mission.sols}</b>Sols to survive</p>
+          <p className="rounded-xl bg-slate-800 p-2"><b className="block text-lg text-amber-200">{mission.samples}</b>samples to collect</p>
+          <p className="rounded-xl bg-slate-800 p-2"><b className="block text-lg text-cyan-200">{Math.round(100 / mission.o2Drain)}s</b>suit O₂ (walking)</p>
+        </div>
+        <HowToPlay />
+        <div className="mt-5 flex gap-3">
+          <button onClick={beginPlay} autoFocus className="flex-1 rounded-xl bg-cyan-400 py-3 font-bold text-cyan-950">Start level 🚀</button>
+          <button onClick={exitToMap} className="rounded-xl border border-slate-600 px-4 py-3 text-slate-200">Level map</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PauseMenu() {
+  const { mission, setPaused, startMission, exitToMap } = useGameStore()
+  const [view, setView] = useState('menu') // menu | help | confirm
+  const btn = 'w-full rounded-xl px-4 py-3 font-bold'
+  return (
+    <div className="absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div className="w-full max-w-md rounded-2xl border border-slate-600 bg-slate-900 p-5">
+        <p className="text-xs font-bold tracking-widest text-slate-400">LEVEL {mission.id} · {mission.name.toUpperCase()}</p>
+        <h2 id="pause-title" className="mb-4 text-2xl font-black text-white">{view === 'confirm' ? 'Exit this level?' : view === 'help' ? 'How to play' : '⏸ Paused'}</h2>
+        {view === 'menu' && (
+          <div className="grid gap-2">
+            <button onClick={() => setPaused(false)} autoFocus className={`${btn} bg-cyan-400 text-cyan-950`}>▶ Resume</button>
+            <button onClick={() => startMission(mission.id)} className={`${btn} border border-slate-600 text-slate-100`}>↻ Restart level</button>
+            <button onClick={() => setView('help')} className={`${btn} border border-slate-600 text-slate-100`}>❓ How to play</button>
+            <button onClick={() => setView('confirm')} className={`${btn} border border-red-400/60 text-red-200`}>🚪 Exit to level map</button>
+          </div>
+        )}
+        {view === 'help' && (
+          <>
+            <HowToPlay />
+            <button onClick={() => setView('menu')} className={`${btn} mt-4 border border-slate-600 text-slate-100`}>← Back</button>
+          </>
+        )}
+        {view === 'confirm' && (
+          <>
+            <p className="text-slate-300">Your progress in this run will be lost. Stars and credits you already earned are kept.</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button onClick={exitToMap} className={`${btn} bg-red-500 text-white`}>Exit</button>
+              <button onClick={() => setView('menu')} autoFocus className={`${btn} border border-slate-600 text-slate-100`}>Keep playing</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
-  const { res, sol, event, fact, log, choose, nextSol, planet, mission, suitO2, samples, toast, dismissToast } = useGameStore()
+  const { res, sol, event, fact, log, choose, nextSol, planet, mission, suitO2, samples, toast, dismissToast, paused, setPaused, briefing } = useGameStore()
   const got = samples.filter((x) => x.collected).length
   useEffect(() => { if (!toast) return; const t = setTimeout(dismissToast, 6000); return () => clearTimeout(t) }, [toast, dismissToast])
   const stations = assignStations(event.choices)
@@ -71,7 +155,11 @@ export default function Dashboard() {
   const [open, setOpen] = useState(() => { try { return localStorage.getItem('astro-panel') !== 'hidden' } catch { return true } })
   const toggle = () => setOpen((v) => { try { localStorage.setItem('astro-panel', v ? 'hidden' : 'open') } catch { /* private mode */ } return !v })
   useEffect(() => {
-    const onKey = (e) => { if (e.code === 'KeyH' && !e.repeat) toggle() }
+    const onKey = (e) => {
+      if (e.repeat) return
+      if (e.code === 'KeyH') toggle()
+      if (e.code === 'Escape') { const st = useGameStore.getState(); if (!st.briefing) st.setPaused(!st.paused) }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -86,7 +174,13 @@ export default function Dashboard() {
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 grid gap-2 p-3">
         <header className="flex items-center justify-between">
           <h1 className="text-sm font-black tracking-widest text-cyan-300 drop-shadow">{{ mars: '🔴', europa: '🧊' }[planet] ?? '🌕'} MISSION {mission.id}: {mission.name.toUpperCase()}</h1>
-          <span className="rounded-full border border-cyan-400/50 bg-slate-950/70 px-3 py-0.5 font-mono text-sm text-cyan-200">Sol {sol}/{mission.sols}</span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-cyan-400/50 bg-slate-950/70 px-3 py-0.5 font-mono text-sm text-cyan-200">Sol {sol}/{mission.sols}</span>
+            <button onClick={() => setPaused(true)} title="Pause (Esc)"
+              className="pointer-events-auto rounded-full border border-slate-500 bg-slate-950/80 px-3 py-0.5 text-sm font-bold text-slate-100 hover:border-cyan-300">
+              ⏸ Menu
+            </button>
+          </div>
         </header>
         <section className="grid grid-cols-[2fr_1fr] gap-2">
           <div className={`rounded-lg border bg-slate-950/75 px-2 py-1.5 backdrop-blur ${suitO2 < 30 ? 'animate-pulse border-red-500' : 'border-cyan-700'}`}>
@@ -148,6 +242,9 @@ export default function Dashboard() {
         </ul>
         <p className="mt-2 text-[11px] text-slate-500">Base uses ⚡{DRAIN.power} 💨{DRAIN.oxygen} per Sol</p>
       </aside>
+
+      {briefing && <Briefing />}
+      {paused && !briefing && <PauseMenu />}
 
       {toast && !fact && (
         <div role="status" className="absolute bottom-24 left-1/2 z-20 w-[min(26rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-amber-400/60 bg-slate-950/90 p-4 text-left shadow-[0_0_24px_#f59e0b44] md:bottom-6">

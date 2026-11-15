@@ -133,6 +133,13 @@ export const useGameStore = create((set, get) => ({
 
   dismissToast: () => set({ toast: null }),
 
+  paused: false, // pause menu open: the world freezes (no movement, no suit-oxygen drain)
+  briefing: false, // mission briefing shown at the start of every level
+  setPaused: (paused) => set({ paused }),
+  beginPlay: () => set({ briefing: false, paused: false }),
+  /** Leave the level without a result: no credits, no penalty, stars from earlier wins stay. */
+  exitToMap: () => set({ screen: 'map', paused: false, briefing: false, toast: null, fact: null }),
+
   endMission: (result, reason, next) => {
     const { mission, progress, credits } = get()
     if (result === 'victory') {
@@ -170,7 +177,7 @@ export const useGameStore = create((set, get) => ({
   startMission: (id = get().mission.id) => {
     const mission = missionById(id)
     const deck = buildDeck(mission, get().spaceWeather)
-    set({ screen: 'game', mission, planet: mission.planet, res: { ...mission.start, science: 0 }, sol: 1, deck, event: deck[0], fact: null, log: [], result: null, reason: null, samples: makeSamples(mission), suitO2: 100, toast: null })
+    set({ screen: 'game', mission, planet: mission.planet, res: { ...mission.start, science: 0 }, sol: 1, deck, event: deck[0], fact: null, log: [], result: null, reason: null, samples: makeSamples(mission), suitO2: 100, toast: null, briefing: true, paused: false })
   },
 
   choose: (choice) => {

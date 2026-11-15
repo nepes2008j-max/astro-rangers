@@ -264,7 +264,7 @@ function Astronaut({ pads }) {
     const dt = Math.min(delta, 0.05)
     const p = root.current.position
     const st = useGameStore.getState()
-    const locked = !!st.fact
+    const locked = !!st.fact || st.paused || st.briefing // frozen while a popup, the pause menu or the briefing is open
 
     if (st.respawn !== s.respawn) { // rescued: back to the airlock with a full tank
       s.respawn = st.respawn; s.o2 = 100; s.vx = s.vz = 0

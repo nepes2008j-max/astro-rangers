@@ -1,7 +1,7 @@
 # Astro Rangers: Outpost Survival
 
-A 3D NASA Space Apps game for kids (7–12). Walk your astronaut around a Moon (then Mars) base,
-handle real space-weather alerts, and keep ⚡ power, 💨 oxygen and 🛡️ shields above zero for 10 Sols.
+A 3D NASA Space Apps game for ages 10–16. Walk your astronaut around bases on the Moon, Mars and Europa,
+handle real space-weather alerts, collect science samples and keep ⚡ power, 💨 oxygen and 🛡️ shields above zero across 15 levels.
 
 **Play:** https://&lt;your-github-username&gt;.github.io/astro-rangers/
 
